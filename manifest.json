@@ -1,0 +1,24 @@
+{
+  "name": "GB Cobros - Kit de Profesionalización",
+  "short_name": "GB Cobros",
+  "description": "Sistema de gestión de cobros, facturación y seguimiento para PyMEs de Mendoza. Parte del Kit de Profesionalización de GB Consultoría.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#059669",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%23059669'/%3E%3Ctext x='50' y='62' font-size='48' font-weight='700' fill='white' text-anchor='middle' font-family='system-ui'%3EGB%3C/text%3E%3C/svg%3E",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%23059669'/%3E%3Ctext x='50' y='62' font-size='48' font-weight='700' fill='white' text-anchor='middle' font-family='system-ui'%3EGB%3C/text%3E%3C/svg%3E",
+      "sizes": "512x512",
+      "type": "image/svg+xml"
+    }
+  ],
+  "categories": ["business", "finance", "productivity"],
+  "lang": "es-AR"
+}
