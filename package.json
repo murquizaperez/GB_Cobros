@@ -1,0 +1,8 @@
+{
+  "name": "gestion-de-cobros-gbx",
+  "version": "3.4.0",
+  "description": "GB Cobros v3.4 - Sistema de Gestión de Cobros + Facturación Real ARCA (AFIP)",
+  "dependencies": {
+    "afip-sdk": "^1.1.0"
+  }
+}
