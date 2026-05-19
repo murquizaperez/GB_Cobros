@@ -2,15 +2,7 @@
 // GB Cobros v3.5 - ARCA directa (@arcasdk/core)
 // Factura C - Monotributo (CbteTipo 11, sin IVA)
 // =============================================
-const {
-  Arca,
-  AuthRepository,
-  AccessTicket,
-  ServiceNamesEnum,
-} = require('@arcasdk/core');
-const fs = require('fs');
-
-const TA_PATH = '/tmp/TA-arca-wsfe.json';
+const { Arca } = require('@arcasdk/core');
 
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') {
@@ -44,42 +36,37 @@ exports.handler = async (event) => {
 
     const cuit = parseInt(data.cuit, 10);
 
-    // Obtener / reusar el Ticket de Acceso (WSAA dura 12hs)
-    let ticket = null;
-    try {
-      if (fs.existsSync(TA_PATH)) {
-        const saved = JSON.parse(fs.readFileSync(TA_PATH, 'utf8'));
-        const t = AccessTicket.create(saved);
-        if (!t.isExpired()) ticket = t;
-      }
-    } catch (_) { /* TA corrupto -> login nuevo */ }
-
-    if (!ticket) {
-      const authRepo = new AuthRepository({
-        cert, key, cuit,
-        production: true,
-        handleTicket: false,
-        useHttpsAgent: true,
-      });
-      ticket = await authRepo.login(ServiceNamesEnum.WSFE);
-      try {
-        fs.writeFileSync(TA_PATH, JSON.stringify(ticket.toLoginCredentials()), 'utf8');
-      } catch (_) { /* /tmp no escribible: seguimos igual */ }
-    }
-
+    // Instancia simple: la librería maneja WSAA por dentro
     const arca = new Arca({
-      cert, key, cuit,
+      cuit,
+      cert,
+      key,
       production: true,
-      handleTicket: true,
-      credentials: ticket.toLoginCredentials(),
-      useHttpsAgent: true,
     });
+
+    const eb = arca.electronicBillingService;
+
+    // Log de diagnóstico: muestra los métodos reales disponibles
+    try {
+      const proto = Object.getPrototypeOf(eb);
+      console.log('[GB Cobros] Metodos EB:', Object.getOwnPropertyNames(proto).join(', '));
+    } catch (_) {}
 
     const ptoVta   = parseInt(data.puntoVenta, 10);
     const cbteTipo = 11; // Factura C - Monotributo
 
-    const last = await arca.electronicBillingService.getLastVoucher(ptoVta, cbteTipo);
-    const nro  = last + 1;
+    // Último número autorizado (probamos los nombres posibles del método)
+    let last = 0;
+    if (typeof eb.getLastBillNumber === 'function') {
+      last = await eb.getLastBillNumber(ptoVta, cbteTipo);
+    } else if (typeof eb.getLastVoucher === 'function') {
+      last = await eb.getLastVoucher(ptoVta, cbteTipo);
+    } else {
+      throw new Error('No se encontró método para obtener el último comprobante. Revisar log "Metodos EB".');
+    }
+    const nro = (typeof last === 'object' && last !== null && last.CbteNro != null)
+      ? parseInt(last.CbteNro, 10) + 1
+      : parseInt(last, 10) + 1;
 
     const impTotal = Math.round(parseFloat(data.importeTotal) * 100) / 100;
 
@@ -89,7 +76,7 @@ exports.handler = async (event) => {
     const ultimoDia = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0);
     const vto       = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 15);
 
-    const voucher = {
+    const payload = {
       CantReg:   1,
       PtoVta:    ptoVta,
       CbteTipo:  cbteTipo,
@@ -107,20 +94,29 @@ exports.handler = async (event) => {
       ImpTrib:   0,
       MonId:     'PES',
       MonCotiz:  1,
+      CondicionIVAReceptorId: 5, // 5 = Consumidor Final
       FchServDesde: fmt(primerDia),
       FchServHasta: fmt(ultimoDia),
       FchVtoPago:   fmt(vto),
     };
 
-    console.log('[GB Cobros] Enviando a ARCA:', JSON.stringify(voucher));
-    const res = await arca.electronicBillingService.createVoucher(voucher);
+    console.log('[GB Cobros] Enviando a ARCA:', JSON.stringify(payload));
+
+    let res;
+    if (typeof eb.createVoucher === 'function') {
+      res = await eb.createVoucher(payload);
+    } else if (typeof eb.createInvoice === 'function') {
+      res = await eb.createInvoice(payload);
+    } else {
+      throw new Error('No se encontró método para crear comprobante. Revisar log "Metodos EB".');
+    }
+
     console.log('[GB Cobros] Respuesta ARCA:', JSON.stringify(res));
 
-    if (!res || !res.CAE || res.Resultado !== 'A') {
-      throw new Error(
-        'ARCA no aprobo. Resultado: ' + (res && res.Resultado ? res.Resultado : 'desconocido') +
-        '. Respuesta: ' + JSON.stringify(res)
-      );
+    const cae = res && (res.CAE || res.cae);
+    const resultado = res && (res.Resultado || res.resultado);
+    if (!cae || resultado === 'R') {
+      throw new Error('ARCA no aprobó. Respuesta: ' + JSON.stringify(res));
     }
 
     return {
@@ -128,11 +124,11 @@ exports.handler = async (event) => {
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
       body: JSON.stringify({
         success: true,
-        cae: res.CAE,
+        cae: cae,
         numeroComprobante:
           String(ptoVta).padStart(4, '0') + '-' + String(nro).padStart(8, '0'),
-        fechaVencimiento: res.CAEFchVto,
-        resultado: res.Resultado,
+        fechaVencimiento: res.CAEFchVto || res.caeFchVto || '',
+        resultado: resultado || 'A',
         tipoComprobante: 'C',
       }),
     };
