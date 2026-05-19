@@ -2,6 +2,7 @@
 // GB Cobros v3.5 - ARCA directa (@arcasdk/core)
 // Factura C - Monotributo (CbteTipo 11, sin IVA)
 // =============================================
+require('tls').DEFAULT_CIPHERS = 'DEFAULT@SECLEVEL=0';
 const { Arca } = require('@arcasdk/core');
 
 exports.handler = async (event) => {
