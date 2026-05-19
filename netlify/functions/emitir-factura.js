@@ -58,18 +58,38 @@ exports.handler = async (event) => {
     const ptoVta   = parseInt(data.puntoVenta, 10);
     const cbteTipo = 11; // Factura C - Monotributo
 
-    // Último número autorizado (probamos los nombres posibles del método)
-    let last = 0;
+    // Último número autorizado — robusto + log de diagnóstico
+    let lastResp;
     if (typeof eb.getLastBillNumber === 'function') {
-      last = await eb.getLastBillNumber(ptoVta, cbteTipo);
+      lastResp = await eb.getLastBillNumber(ptoVta, cbteTipo);
     } else if (typeof eb.getLastVoucher === 'function') {
-      last = await eb.getLastVoucher(ptoVta, cbteTipo);
+      lastResp = await eb.getLastVoucher(ptoVta, cbteTipo);
+    } else if (typeof eb.FECompUltimoAutorizado === 'function') {
+      lastResp = await eb.FECompUltimoAutorizado({ PtoVta: ptoVta, CbteTipo: cbteTipo });
     } else {
-      throw new Error('No se encontró método para obtener el último comprobante. Revisar log "Metodos EB".');
+      throw new Error('No hay método para último comprobante. Ver log "Metodos EB".');
     }
-    const nro = (typeof last === 'object' && last !== null && last.CbteNro != null)
-      ? parseInt(last.CbteNro, 10) + 1
-      : parseInt(last, 10) + 1;
+
+    console.log('[GB Cobros] getLast crudo:', JSON.stringify(lastResp));
+
+    // Extraer el número venga como venga
+    let lastNum = 0;
+    if (typeof lastResp === 'number') {
+      lastNum = lastResp;
+    } else if (lastResp && typeof lastResp === 'object') {
+      lastNum = parseInt(
+        lastResp.CbteNro ??
+        lastResp.cbteNro ??
+        lastResp.numero ??
+        (lastResp.FECompUltimoAutorizadoResult && lastResp.FECompUltimoAutorizadoResult.CbteNro) ??
+        0, 10);
+    } else {
+      lastNum = parseInt(lastResp, 10);
+    }
+    if (isNaN(lastNum)) lastNum = 0;
+    const nro = lastNum + 1;
+
+    console.log('[GB Cobros] Proximo numero:', nro);
 
     const impTotal = Math.round(parseFloat(data.importeTotal) * 100) / 100;
 
