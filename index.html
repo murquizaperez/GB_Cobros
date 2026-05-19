@@ -461,10 +461,10 @@
 
         function seedDemoData() {
             clients = [
-                { id: 'c1', name: "Mariano Mula Meneo", phone: "+54 261 555-1234", address: "Calle Las Heras 1450, Mendoza", work_type: "Electricista", notes: "Cliente recurrente", created_at: "2025-12-10" },
-                { id: 'c2', name: "Juan Claude Perez" - parte II", phone: "+54 261 444-5678", address: "Av. San Martín 890, Godoy Cruz", work_type: "Albañil", notes: "", created_at: "2026-01-05" },
-                { id: 'c3', name: "Carolina Reza que no emita Gutierrez", phone: "+54 261 333-9012", address: "Ruta 7 km 12, Luján de Cuyo", work_type: "Constructor", notes: "Prefiere transferencia", created_at: "2025-11-20" },
-                { id: 'c4', name: "Simon no te salva Gonzalez", phone: "+54 261 222-3344", address: "Barrio San Carlos, Mendoza", work_type: "Paisajista", notes: "", created_at: "2026-02-01" }
+                { id: 'c1', name: "Juan Pérez", phone: "+54 261 555-1234", address: "Calle Las Heras 1450, Mendoza", work_type: "Electricista", notes: "Cliente recurrente", created_at: "2025-12-10" },
+                { id: 'c2', name: "María Gómez", phone: "+54 261 444-5678", address: "Av. San Martín 890, Godoy Cruz", work_type: "Albañil", notes: "", created_at: "2026-01-05" },
+                { id: 'c3', name: "Carlos Ruiz Construcciones", phone: "+54 261 333-9012", address: "Ruta 7 km 12, Luján de Cuyo", work_type: "Constructor", notes: "Prefiere transferencia", created_at: "2025-11-20" },
+                { id: 'c4', name: "Laura Fernández", phone: "+54 261 222-3344", address: "Barrio San Carlos, Mendoza", work_type: "Paisajista", notes: "", created_at: "2026-02-01" }
             ];
 
             works = [
@@ -1413,8 +1413,7 @@
                     throw new Error(result.error || `Error HTTP ${resp.status}`);
                 }
 
-                const newInvoice = {
-                    let qrDataUrl = '';
+                let qrDataUrl = '';
                 try {
                     if (result.qrUrl && window.QRCode) {
                         qrDataUrl = await QRCode.toDataURL(result.qrUrl, { margin: 1, width: 220 });
@@ -1466,27 +1465,6 @@
                     </div>
                 `;
 
-                document.getElementById('modal-content').innerHTML = `
-                    <div class="p-6 text-center">
-                        <div class="mx-auto w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mb-4 text-4xl">✅</div>
-                        <div class="font-semibold text-2xl mb-1">¡Factura C Emitida!</div>
-                        <div class="text-sm text-emerald-600 mb-6">CAE oficial generado por ARCA</div>
-
-                        <div class="bg-emerald-50 border border-emerald-200 rounded-3xl p-5 mb-6 text-left">
-                            <div class="flex justify-between text-sm"><span>Número</span> <span class="font-mono font-semibold">${result.numeroComprobante}</span></div>
-                            <div class="flex justify-between text-sm mt-1"><span>CAE</span> <span class="font-mono font-semibold">${result.cae}</span></div>
-                            <div class="flex justify-between text-sm mt-1"><span>Vto. CAE</span> <span>${result.fechaVencimiento || '-'}</span></div>
-                            <div class="flex justify-between text-sm mt-1"><span>Fecha</span> <span>${formatDate(getToday())}</span></div>
-                            <div class="flex justify-between text-sm mt-1"><span>Monto</span> <span class="font-semibold">${formatCurrency(monto)}</span></div>
-                        </div>
-
-                        <div class="flex gap-3">
-                            <button onclick="hideModal()" class="flex-1 py-3 border border-zinc-200 rounded-3xl text-sm font-semibold">Cerrar</button>
-                            <button onclick="downloadLastInvoicePDF(); hideModal()" class="flex-1 py-3 bg-emerald-600 text-white rounded-3xl text-sm font-semibold">Descargar PDF</button>
-                        </div>
-                    </div>
-                `;
-
                 renderInvoiceSection();
                 updateKPIs();
                 showToast("✅ Factura real emitida en ARCA");
@@ -1505,14 +1483,13 @@
             }
         }
 
-       function downloadLastInvoicePDF() {
+        function downloadLastInvoicePDF() {
             if (!lastEmittedInvoice) return;
             const inv = lastEmittedInvoice;
             downloadInvoicePDFReal(inv.afip_number, inv.cae, inv.notes, inv.amount, inv.qr_img);
-        };
         }
 
-    function downloadInvoicePDFReal(afipNumber, cae, concepto, monto, qrImg) {
+        function downloadInvoicePDFReal(afipNumber, cae, concepto, monto, qrImg) {
             try {
                 const { jsPDF } = window.jspdf;
                 if (!jsPDF) {
@@ -1565,6 +1542,10 @@
                 doc.text("Documento válido como factura electrónica según RG ARCA - Monotributo Factura C", 20, 125);
                 doc.text("GB Consulting • Edificio Avatar, Palmares Valley, Mendoza - Oficina 8, Piso 4", 20, 132);
                 doc.text("Tel: +54 9 261 502 3915 • gbconsultoria.com.ar", 20, 139);
+
+                if (qrImg) {
+                    try { doc.addImage(qrImg, 'PNG', 150, 95, 45, 45); } catch (_) {}
+                }
 
                 doc.save(`Factura-C-${afipNumber}.pdf`);
 
