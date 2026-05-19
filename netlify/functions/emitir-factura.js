@@ -42,6 +42,8 @@ exports.handler = async (event) => {
       cert,
       key,
       production: true,
+      ticketPath: '/tmp',     // FIX: en Netlify solo /tmp es escribible
+      useHttpsAgent: true,    // ARCA usa SSL legacy; en Node.js hace falta
     });
 
     const eb = arca.electronicBillingService;
