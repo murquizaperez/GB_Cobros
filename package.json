@@ -1,8 +1,8 @@
 {
   "name": "gestion-de-cobros-gbx",
   "version": "3.5.0",
-  "description": "GB Cobros v3.5 - Facturación Real ARCA directa (@arcasdk/core)",
-  {"dependencies": { "@arcasdk/core": "^0.3.5" } }
+  "description": "GB Cobros v3.5 - Facturacion Real ARCA Factura C Monotributo",
+  "dependencies": {
     "@arcasdk/core": "^0.3.5"
   }
 }
