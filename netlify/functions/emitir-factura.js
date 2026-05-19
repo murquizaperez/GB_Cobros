@@ -117,6 +117,25 @@ const det0 = (res.response && res.response.FeDetResp &&
     } catch (_) {
       nroAsignado = res.CbteDesde || '';
     }
+    // QR oficial ARCA (RG 4892)
+    const nroCmpNum = parseInt(nroAsignado, 10) || 0;
+    const qrData = {
+      ver: 1,
+      fecha: payload.CbteFch.slice(0,4) + '-' + payload.CbteFch.slice(4,6) + '-' + payload.CbteFch.slice(6,8),
+      cuit: cuit,
+      ptoVta: ptoVta,
+      tipoCmp: cbteTipo,
+      nroCmp: nroCmpNum,
+      importe: impTotal,
+      moneda: 'PES',
+      ctz: 1,
+      tipoDocRec: payload.DocTipo,
+      nroDocRec: payload.DocNro,
+      tipoCodAut: 'E',
+      codAut: parseInt(cae, 10),
+    };
+    const qrUrl = 'https://www.afip.gob.ar/fe/qr/?p=' +
+      Buffer.from(JSON.stringify(qrData)).toString('base64');
 
     return {
       statusCode: 200,
@@ -127,8 +146,9 @@ const det0 = (res.response && res.response.FeDetResp &&
         numeroComprobante:
           String(ptoVta).padStart(4, '0') + '-' + String(nroAsignado).padStart(8, '0'),
       fechaVencimiento: det0.CAEFchVto || res.CAEFchVto || res.caeFchVto || '',
-        resultado: resultado || 'A',
+       resultado: resultado || 'A',
         tipoComprobante: 'C',
+        qrUrl: qrUrl,
       }),
     };
 
