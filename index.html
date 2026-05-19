@@ -10,6 +10,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Space+Grotesk:wght@600&amp;display=swap');
@@ -460,10 +461,10 @@
 
         function seedDemoData() {
             clients = [
-                { id: 'c1', name: "Juan Pérez", phone: "+54 261 555-1234", address: "Calle Las Heras 1450, Mendoza", work_type: "Electricista", notes: "Cliente recurrente", created_at: "2025-12-10" },
-                { id: 'c2', name: "María Gómez", phone: "+54 261 444-5678", address: "Av. San Martín 890, Godoy Cruz", work_type: "Albañil", notes: "", created_at: "2026-01-05" },
-                { id: 'c3', name: "Carlos Ruiz Construcciones", phone: "+54 261 333-9012", address: "Ruta 7 km 12, Luján de Cuyo", work_type: "Constructor", notes: "Prefiere transferencia", created_at: "2025-11-20" },
-                { id: 'c4', name: "Laura Fernández", phone: "+54 261 222-3344", address: "Barrio San Carlos, Mendoza", work_type: "Paisajista", notes: "", created_at: "2026-02-01" }
+                { id: 'c1', name: "Mariano Mula Meneo", phone: "+54 261 555-1234", address: "Calle Las Heras 1450, Mendoza", work_type: "Electricista", notes: "Cliente recurrente", created_at: "2025-12-10" },
+                { id: 'c2', name: "Juan Claude Perez" - parte II", phone: "+54 261 444-5678", address: "Av. San Martín 890, Godoy Cruz", work_type: "Albañil", notes: "", created_at: "2026-01-05" },
+                { id: 'c3', name: "Carolina Reza que no emita Gutierrez", phone: "+54 261 333-9012", address: "Ruta 7 km 12, Luján de Cuyo", work_type: "Constructor", notes: "Prefiere transferencia", created_at: "2025-11-20" },
+                { id: 'c4', name: "Simon no te salva Gonzalez", phone: "+54 261 222-3344", address: "Barrio San Carlos, Mendoza", work_type: "Paisajista", notes: "", created_at: "2026-02-01" }
             ];
 
             works = [
@@ -1413,6 +1414,14 @@
                 }
 
                 const newInvoice = {
+                    let qrDataUrl = '';
+                try {
+                    if (result.qrUrl && window.QRCode) {
+                        qrDataUrl = await QRCode.toDataURL(result.qrUrl, { margin: 1, width: 220 });
+                    }
+                } catch (_) {}
+
+                const newInvoice = {
                     id: 'i' + Date.now(),
                     work_id: workId || null,
                     afip_number: result.numeroComprobante,
@@ -1423,11 +1432,39 @@
                     cae: result.cae,
                     cae_vto: result.fechaVencimiento || '',
                     tipo: 'C',
-                    punto_venta: pv
+                    punto_venta: pv,
+                    qr_url: result.qrUrl || '',
+                    qr_img: qrDataUrl
                 };
                 invoices.unshift(newInvoice);
                 lastEmittedInvoice = newInvoice;
                 saveToLocalStorage();
+
+                document.getElementById('modal-content').innerHTML = `
+                    <div class="p-6 text-center">
+                        <div class="mx-auto w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mb-4 text-4xl">✅</div>
+                        <div class="font-semibold text-2xl mb-1">¡Factura C Emitida!</div>
+                        <div class="text-sm text-emerald-600 mb-5">CAE oficial generado por ARCA</div>
+
+                        <div class="bg-emerald-50 border border-emerald-200 rounded-3xl p-5 mb-4 text-left">
+                            <div class="flex justify-between text-sm"><span>Número</span> <span class="font-mono font-semibold">${result.numeroComprobante}</span></div>
+                            <div class="flex justify-between text-sm mt-1"><span>CAE</span> <span class="font-mono font-semibold">${result.cae}</span></div>
+                            <div class="flex justify-between text-sm mt-1"><span>Vto. CAE</span> <span>${result.fechaVencimiento || '-'}</span></div>
+                            <div class="flex justify-between text-sm mt-1"><span>Fecha</span> <span>${formatDate(getToday())}</span></div>
+                            <div class="flex justify-between text-sm mt-1"><span>Monto</span> <span class="font-semibold">${formatCurrency(monto)}</span></div>
+                        </div>
+
+                        ${qrDataUrl ? `<div class="flex flex-col items-center mb-5">
+                            <img src="${qrDataUrl}" alt="QR ARCA" class="w-40 h-40">
+                            <div class="text-[10px] text-zinc-400 mt-1">Comprobante autorizado por ARCA</div>
+                        </div>` : ''}
+
+                        <div class="flex gap-3">
+                            <button onclick="hideModal()" class="flex-1 py-3 border border-zinc-200 rounded-3xl text-sm font-semibold">Cerrar</button>
+                            <button onclick="downloadLastInvoicePDF(); hideModal()" class="flex-1 py-3 bg-emerald-600 text-white rounded-3xl text-sm font-semibold">Descargar PDF</button>
+                        </div>
+                    </div>
+                `;
 
                 document.getElementById('modal-content').innerHTML = `
                     <div class="p-6 text-center">
@@ -1468,13 +1505,14 @@
             }
         }
 
-        function downloadLastInvoicePDF() {
+       function downloadLastInvoicePDF() {
             if (!lastEmittedInvoice) return;
             const inv = lastEmittedInvoice;
-            downloadInvoicePDFReal(inv.afip_number, inv.cae, inv.notes, inv.amount);
+            downloadInvoicePDFReal(inv.afip_number, inv.cae, inv.notes, inv.amount, inv.qr_img);
+        };
         }
 
-        function downloadInvoicePDFReal(afipNumber, cae, concepto, monto) {
+    function downloadInvoicePDFReal(afipNumber, cae, concepto, monto, qrImg) {
             try {
                 const { jsPDF } = window.jspdf;
                 if (!jsPDF) {
