@@ -57,40 +57,7 @@ exports.handler = async (event) => {
 
     const ptoVta   = parseInt(data.puntoVenta, 10);
     const cbteTipo = 11; // Factura C - Monotributo
-
-    // Último número autorizado — robusto + log de diagnóstico
-    let lastResp;
-    if (typeof eb.getLastBillNumber === 'function') {
-      lastResp = await eb.getLastBillNumber(ptoVta, cbteTipo);
-    } else if (typeof eb.getLastVoucher === 'function') {
-      lastResp = await eb.getLastVoucher(ptoVta, cbteTipo);
-    } else if (typeof eb.FECompUltimoAutorizado === 'function') {
-      lastResp = await eb.FECompUltimoAutorizado({ PtoVta: ptoVta, CbteTipo: cbteTipo });
-    } else {
-      throw new Error('No hay método para último comprobante. Ver log "Metodos EB".');
-    }
-
-    console.log('[GB Cobros] getLast crudo:', JSON.stringify(lastResp));
-
-    // Extraer el número venga como venga
-    let lastNum = 0;
-    if (typeof lastResp === 'number') {
-      lastNum = lastResp;
-    } else if (lastResp && typeof lastResp === 'object') {
-      lastNum = parseInt(
-        lastResp.CbteNro ??
-        lastResp.cbteNro ??
-        lastResp.numero ??
-        (lastResp.FECompUltimoAutorizadoResult && lastResp.FECompUltimoAutorizadoResult.CbteNro) ??
-        0, 10);
-    } else {
-      lastNum = parseInt(lastResp, 10);
-    }
-    if (isNaN(lastNum)) lastNum = 0;
-    const nro = lastNum + 1;
-
-    console.log('[GB Cobros] Proximo numero:', nro);
-
+// createNextVoucher maneja la numeración solo (último + 1)
     const impTotal = Math.round(parseFloat(data.importeTotal) * 100) / 100;
 
     const fmt = (d) => d.toISOString().slice(0, 10).replace(/-/g, '');
@@ -106,8 +73,6 @@ exports.handler = async (event) => {
       Concepto:  2,
       DocTipo:   data.cliente && data.cliente.documento ? 80 : 99,
       DocNro:    parseInt((data.cliente && data.cliente.documento) || 0, 10),
-      CbteDesde: nro,
-      CbteHasta: nro,
       CbteFch:   fmt(hoy),
       ImpTotal:  impTotal,
       ImpTotConc: 0,
@@ -117,7 +82,7 @@ exports.handler = async (event) => {
       ImpTrib:   0,
       MonId:     'PES',
       MonCotiz:  1,
-      CondicionIVAReceptorId: 5, // 5 = Consumidor Final
+      CondicionIVAReceptorId: 5,
       FchServDesde: fmt(primerDia),
       FchServHasta: fmt(ultimoDia),
       FchVtoPago:   fmt(vto),
@@ -125,14 +90,7 @@ exports.handler = async (event) => {
 
     console.log('[GB Cobros] Enviando a ARCA:', JSON.stringify(payload));
 
-    let res;
-    if (typeof eb.createVoucher === 'function') {
-      res = await eb.createVoucher(payload);
-    } else if (typeof eb.createInvoice === 'function') {
-      res = await eb.createInvoice(payload);
-    } else {
-      throw new Error('No se encontró método para crear comprobante. Revisar log "Metodos EB".');
-    }
+    const res = await eb.createNextVoucher(payload);
 
     console.log('[GB Cobros] Respuesta ARCA:', JSON.stringify(res));
 
@@ -142,6 +100,8 @@ exports.handler = async (event) => {
       throw new Error('ARCA no aprobó. Respuesta: ' + JSON.stringify(res));
     }
 
+    const nroAsignado = res.CbteDesde || res.cbteDesde || res.voucherNumber || '';
+
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
@@ -149,7 +109,7 @@ exports.handler = async (event) => {
         success: true,
         cae: cae,
         numeroComprobante:
-          String(ptoVta).padStart(4, '0') + '-' + String(nro).padStart(8, '0'),
+          String(ptoVta).padStart(4, '0') + '-' + String(nroAsignado).padStart(8, '0'),
         fechaVencimiento: res.CAEFchVto || res.caeFchVto || '',
         resultado: resultado || 'A',
         tipoComprobante: 'C',
