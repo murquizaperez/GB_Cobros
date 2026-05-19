@@ -94,13 +94,29 @@ exports.handler = async (event) => {
 
     console.log('[GB Cobros] Respuesta ARCA:', JSON.stringify(res));
 
-    const cae = res && (res.CAE || res.cae);
-    const resultado = res && (res.Resultado || res.resultado);
+const det0 = (res.response && res.response.FeDetResp &&
+                  res.response.FeDetResp.FECAEDetResponse &&
+                  res.response.FeDetResp.FECAEDetResponse[0]) || {};
+    const cae = (det0.CAE) || res.CAE || res.cae;
+    const resultado = (det0.Resultado) ||
+                      (res.response && res.response.FeCabResp && res.response.FeCabResp.Resultado) ||
+                      res.Resultado || res.resultado;
     if (!cae || resultado === 'R') {
       throw new Error('ARCA no aprobó. Respuesta: ' + JSON.stringify(res));
     }
 
-    const nroAsignado = res.CbteDesde || res.cbteDesde || res.voucherNumber || '';
+  // El número real viene anidado en la respuesta de ARCA
+    let nroAsignado = '';
+    try {
+      const det = res.response &&
+                  res.response.FeDetResp &&
+                  res.response.FeDetResp.FECAEDetResponse &&
+                  res.response.FeDetResp.FECAEDetResponse[0];
+      nroAsignado = (det && det.CbteDesde) ||
+                    res.CbteDesde || res.cbteDesde || res.voucherNumber || '';
+    } catch (_) {
+      nroAsignado = res.CbteDesde || '';
+    }
 
     return {
       statusCode: 200,
@@ -110,7 +126,7 @@ exports.handler = async (event) => {
         cae: cae,
         numeroComprobante:
           String(ptoVta).padStart(4, '0') + '-' + String(nroAsignado).padStart(8, '0'),
-        fechaVencimiento: res.CAEFchVto || res.caeFchVto || '',
+      fechaVencimiento: det0.CAEFchVto || res.CAEFchVto || res.caeFchVto || '',
         resultado: resultado || 'A',
         tipoComprobante: 'C',
       }),
