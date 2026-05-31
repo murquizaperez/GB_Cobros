@@ -1,8 +1,8 @@
 {
-  "name": "gestion-de-cobros-gbx",
-  "version": "3.5.0",
-  "description": "GB Cobros v3.5 - Facturacion Real ARCA Factura C Monotributo",
+  "name": "gb-cobros-netlify",
+  "version": "1.0.0",
+  "private": true,
   "dependencies": {
-    "@arcasdk/core": "^0.3.5"
+    "@afipsdk/afip.js": "^1.3.0"
   }
 }
