@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="description" content="GB Cobros v3.5 • Facturación REAL directa con ARCA (AFIP) — Factura C Monotributo | GB Consultoría">
+    <meta name="description" content="Monnoserie • Cobros y facturación REAL con ARCA (AFIP) — Factura C Monotributo">
     <meta name="theme-color" content="#059669">
-    <title>GB Cobros v3.5 • Facturación Real ARCA</title>
+    <title>Monnoserie • Cobros y Facturación ARCA</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
@@ -94,8 +94,8 @@
                             <span class="text-white text-xl font-black tracking-tighter">GB</span>
                         </div>
                         <div>
-                            <div class="font-display text-xl font-semibold tracking-tighter text-zinc-900" id="header-company-name">GB Cobros v3.5</div>
-                            <div class="text-[10px] text-emerald-600 -mt-1 font-medium">KIT PROFESIONALIZACIÓN</div>
+                            <div class="font-display text-xl font-semibold tracking-tighter text-zinc-900" id="header-company-name">Monnoserie</div>
+                            <div class="text-[10px] text-emerald-600 -mt-1 font-medium">COBROS · PANADERÍA ARTESANAL</div>
                         </div>
                     </div>
                 </div>
@@ -158,7 +158,7 @@
                         <div id="kpi-clients" class="text-2xl font-semibold">0</div>
                     </div>
                     <div class="flex-1 bg-white border border-zinc-100 rounded-3xl px-4 py-3 text-center">
-                        <div class="text-xs text-zinc-500">Obras pendientes</div>
+                        <div class="text-xs text-zinc-500">Pedidos con saldo</div>
                         <div id="kpi-pending-works" class="text-2xl font-semibold">0</div>
                     </div>
                     <div class="flex-1 bg-white border border-zinc-100 rounded-3xl px-4 py-3 text-center">
@@ -195,8 +195,8 @@
                         </div>
 
                         <div onclick="showNewWorkModal()" class="bg-white border border-zinc-200 active:bg-emerald-50 transition-colors rounded-3xl p-3 flex flex-col items-center justify-center cursor-pointer">
-                            <div class="text-3xl mb-1">🔧</div>
-                            <div class="text-xs font-semibold text-center">Nuevo<br>trabajo</div>
+                            <div class="text-3xl mb-1">🥐</div>
+                            <div class="text-xs font-semibold text-center">Nuevo<br>pedido</div>
                         </div>
 
                         <div onclick="showQuickPaymentModal()" class="bg-white border border-zinc-200 active:bg-emerald-50 transition-colors rounded-3xl p-3 flex flex-col items-center justify-center cursor-pointer">
@@ -224,17 +224,17 @@
                 <div id="clients-list" class="space-y-2.5"></div>
             </div>
 
-            <!-- OBRAS -->
+            <!-- PEDIDOS -->
             <div id="section-works" class="section px-4 pt-4">
                 <div class="flex items-center justify-between mb-4">
-                    <div class="font-semibold text-xl tracking-tight">Obras y proyectos</div>
-                    <button onclick="showNewWorkModal()" class="flex items-center gap-x-2 bg-emerald-600 active:bg-emerald-700 transition-colors text-white text-sm font-semibold px-4 py-2 rounded-3xl">+ Nueva</button>
+                    <div class="font-semibold text-xl tracking-tight">Pedidos</div>
+                    <button onclick="showNewWorkModal()" class="flex items-center gap-x-2 bg-emerald-600 active:bg-emerald-700 transition-colors text-white text-sm font-semibold px-4 py-2 rounded-3xl">+ Nuevo</button>
                 </div>
 
                 <div class="flex gap-2 mb-4 overflow-x-auto pb-2">
                     <div onclick="filterWorks('all')" class="work-filter px-4 py-1.5 text-xs font-semibold bg-emerald-600 text-white rounded-3xl cursor-pointer whitespace-nowrap active-filter" data-filter="all">Todos</div>
-                    <div onclick="filterWorks('en_curso')" class="work-filter px-4 py-1.5 text-xs font-semibold bg-white border border-zinc-200 rounded-3xl cursor-pointer whitespace-nowrap" data-filter="en_curso">En curso</div>
-                    <div onclick="filterWorks('terminado')" class="work-filter px-4 py-1.5 text-xs font-semibold bg-white border border-zinc-200 rounded-3xl cursor-pointer whitespace-nowrap" data-filter="terminado">Terminados</div>
+                    <div onclick="filterWorks('en_curso')" class="work-filter px-4 py-1.5 text-xs font-semibold bg-white border border-zinc-200 rounded-3xl cursor-pointer whitespace-nowrap" data-filter="en_curso">En preparación</div>
+                    <div onclick="filterWorks('terminado')" class="work-filter px-4 py-1.5 text-xs font-semibold bg-white border border-zinc-200 rounded-3xl cursor-pointer whitespace-nowrap" data-filter="terminado">Entregados</div>
                     <div onclick="filterWorks('deuda')" class="work-filter px-4 py-1.5 text-xs font-semibold bg-white border border-zinc-200 rounded-3xl cursor-pointer whitespace-nowrap" data-filter="deuda">Con deuda</div>
                 </div>
 
@@ -300,7 +300,7 @@
                 </div>
 
                 <div class="mb-4">
-                    <div class="font-medium text-sm mb-2 px-1">Obras listas para facturar</div>
+                    <div class="font-medium text-sm mb-2 px-1">Pedidos listos para facturar</div>
                     <div id="ready-to-invoice-list" class="space-y-2"></div>
                 </div>
 
@@ -326,8 +326,8 @@
                     <div class="font-medium text-sm mb-3">Consejos inteligentes</div>
                     <div class="text-xs text-zinc-600 space-y-2">
                         <div>• Clientes sin contacto hace +60 días = oportunidad de reactivación</div>
-                        <div>• Obras terminadas hace 7+ días sin cobro = recordatorio automático</div>
-                        <div>• Obras cobradas hace 30+ días = pedir reseña en Google</div>
+                        <div>• Pedidos entregados hace 7+ días sin cobro = recordatorio automático</div>
+                        <div>• Pedidos cobrados hace 30+ días = pedir reseña en Google</div>
                     </div>
                 </div>
             </div>
@@ -381,7 +381,7 @@
                 </div>
                 <div onclick="navigateTo('works')" class="nav-item flex flex-col items-center justify-center py-3 text-zinc-500 cursor-pointer" id="nav-works">
                     <div class="text-xl mb-0.5">🔧</div>
-                    <span class="font-medium">Obras</span>
+                    <span class="font-medium">Pedidos</span>
                 </div>
                 <div onclick="navigateTo('payments')" class="nav-item flex flex-col items-center justify-center py-3 text-zinc-500 cursor-pointer" id="nav-payments">
                     <div class="text-xl mb-0.5">💵</div>
@@ -475,19 +475,19 @@ function aplicarProducto() {
         function getToday() { return new Date().toISOString().split('T')[0]; }
 
         function saveToLocalStorage() {
-            localStorage.setItem('gb_clients_v3', JSON.stringify(clients));
-            localStorage.setItem('gb_works_v3', JSON.stringify(works));
-            localStorage.setItem('gb_payments_v3', JSON.stringify(payments));
-            localStorage.setItem('gb_invoices_v3', JSON.stringify(invoices));
-            localStorage.setItem('gb_config_v3', JSON.stringify(config));
+            localStorage.setItem('gb_clients_mn1', JSON.stringify(clients));
+            localStorage.setItem('gb_works_mn1', JSON.stringify(works));
+            localStorage.setItem('gb_payments_mn1', JSON.stringify(payments));
+            localStorage.setItem('gb_invoices_mn1', JSON.stringify(invoices));
+            localStorage.setItem('gb_config_mn1', JSON.stringify(config));
         }
 
         function loadFromLocalStorage() {
-            clients = JSON.parse(localStorage.getItem('gb_clients_v3')) || [];
-            works = JSON.parse(localStorage.getItem('gb_works_v3')) || [];
-            payments = JSON.parse(localStorage.getItem('gb_payments_v3')) || [];
-            invoices = JSON.parse(localStorage.getItem('gb_invoices_v3')) || [];
-            const savedConfig = localStorage.getItem('gb_config_v3');
+            clients = JSON.parse(localStorage.getItem('gb_clients_mn1')) || [];
+            works = JSON.parse(localStorage.getItem('gb_works_mn1')) || [];
+            payments = JSON.parse(localStorage.getItem('gb_payments_mn1')) || [];
+            invoices = JSON.parse(localStorage.getItem('gb_invoices_mn1')) || [];
+            const savedConfig = localStorage.getItem('gb_config_mn1');
             if (savedConfig) config = { ...config, ...JSON.parse(savedConfig) };
 
             if (clients.length === 0) seedDemoData();
@@ -495,33 +495,88 @@ function aplicarProducto() {
 
         function seedDemoData() {
             clients = [
-                { id: 'c1', name: "Juan Pérez", phone: "+54 261 555-1234", address: "Calle Las Heras 1450, Mendoza", work_type: "Electricista", notes: "Cliente recurrente", created_at: "2025-12-10" },
-                { id: 'c2', name: "María Gómez", phone: "+54 261 444-5678", address: "Av. San Martín 890, Godoy Cruz", work_type: "Albañil", notes: "", created_at: "2026-01-05" },
-                { id: 'c3', name: "Carlos Ruiz Construcciones", phone: "+54 261 333-9012", address: "Ruta 7 km 12, Luján de Cuyo", work_type: "Constructor", notes: "Prefiere transferencia", created_at: "2025-11-20" },
-                { id: 'c4', name: "Laura Fernández", phone: "+54 261 222-3344", address: "Barrio San Carlos, Mendoza", work_type: "Paisajista", notes: "", created_at: "2026-02-01" }
+                {"id": "c1", "name": "Cafe555", "phone": "2612375547", "address": "Italia 5649", "work_type": "Cafetería", "notes": "martinabernardita24@gmail.com", "created_at": "2025-02-14"},
+                {"id": "c2", "name": "Hotel entre cielo", "phone": "26102029394", "address": "Guardia Vieja 1998", "work_type": "Hotel", "notes": "salinasivan_97_@outlook.es", "created_at": "2025-02-14"},
+                {"id": "c3", "name": "Lisa colque", "phone": "2615161080", "address": "Mitre 756", "work_type": "Minorista", "notes": "lisacolque@gmail.com", "created_at": "2025-02-14"},
+                {"id": "c4", "name": "DELIS CAFÉ VINTAGE SHOP", "phone": "2613415823", "address": "Aristides 570- Ciudad", "work_type": "Cafetería", "notes": "deliscafevintageshop@gmail.com", "created_at": "2025-02-14"},
+                {"id": "c5", "name": "Victorina Coria", "phone": "2616 90-3835", "address": "Viamonte 5458", "work_type": "Minorista", "notes": "admvictorina@gmail.com", "created_at": "2025-02-14"},
+                {"id": "c6", "name": "Juan Pablo", "phone": "2617550252", "address": "Pueyrredon 57,Rodeo del Medio", "work_type": "Minorista", "notes": "juanmma150@gmail.com", "created_at": "2025-02-14"},
+                {"id": "c7", "name": "Trazo Dulce SAS", "phone": "2615339449", "address": "Pueyrredón 5301 esquina Panamericana, Chacras de Coria, Mendoza", "work_type": "Mayorista", "notes": "trazodulcepasteleria@gmail.com", "created_at": "2025-02-14"},
+                {"id": "c8", "name": "cafe black mamba", "phone": "2617480193", "address": "almirante brown 1840 barrio bombal godoy cruz", "work_type": "Cafetería", "notes": "benitocafesas@gmail.com", "created_at": "2025-02-14"},
+                {"id": "c9", "name": "Jimena Garcia Zapata", "phone": "2612541375", "address": "Aguinaga 1392, chacras de coria", "work_type": "Minorista", "notes": "jimenagarciazapata@gmail.com", "created_at": "2025-02-14"},
+                {"id": "c10", "name": "Matias Exequiel Contreras", "phone": "2616902709", "address": "Taboada 764", "work_type": "Minorista", "notes": "matiascontre@hotmail.com", "created_at": "2025-02-14"},
+                {"id": "c11", "name": "Patio Godoy", "phone": "2615169547", "address": "Pedro J Godoy 880, Local 2", "work_type": "Cafetería", "notes": "cafegbx@gmail.com", "created_at": "2025-02-14"},
+                {"id": "c12", "name": "Berry Good", "phone": "2617071426", "address": "Colón 189. Ciudad", "work_type": "Cafetería", "notes": "luciano.emoreno94@gmail.com", "created_at": "2025-02-14"},
+                {"id": "c13", "name": "Agustin Hospital Lagomaggiore", "phone": "155023915", "address": "Timoteo Gordillo s/n, Mendoza, CP 5500.", "work_type": "Otro", "notes": "motta@gmail.com", "created_at": "2025-02-14"},
+                {"id": "c14", "name": "La veredita", "phone": "2616935575", "address": "Aristides Villanueva 770 ciudad", "work_type": "Restaurante", "notes": "machifarru@gmail.com", "created_at": "2025-02-14"},
+                {"id": "c15", "name": "Olivicola Centenario", "phone": "2615594263", "address": "Centenario olivicola", "work_type": "Mayorista", "notes": "administracion@olivarescentenario.com", "created_at": "2025-02-14"},
+                {"id": "c16", "name": "mariano meneo", "phone": "2615023915", "address": "guiñazu 162", "work_type": "Minorista", "notes": "meneo10@gmail.com", "created_at": "2025-02-14"},
+                {"id": "c17", "name": "Carolina Arenas", "phone": "2615061001", "address": "Chuquisaca 1050, Godoy Cruz", "work_type": "Minorista", "notes": "caroarenasww@gmail.com", "created_at": "2025-02-14"},
+                {"id": "c18", "name": "Camila cruz", "phone": "2615595885", "address": "Aristides Villanueva 396", "work_type": "Minorista", "notes": "camilacruz2468@hotmail.com", "created_at": "2025-02-14"},
+                {"id": "c19", "name": "fabrio", "phone": "2616754627", "address": "GUIÑAZU 162", "work_type": "Minorista", "notes": "fabripiffa@gmail.com", "created_at": "2025-02-14"},
+                {"id": "c20", "name": "Celeste micaela celedon", "phone": "2617451140", "address": "Goya chacras\nDarrahueria 558", "work_type": "Minorista", "notes": "cele271530@gmail.com", "created_at": "2025-02-14"},
+                {"id": "c21", "name": "Ramiro Gil", "phone": "2615878148", "address": "Perón 219, Maipú, Mendoza", "work_type": "Minorista", "notes": "ramiro.gil13@gmail.com", "created_at": "2025-02-14"},
+                {"id": "c22", "name": "Martín Durán", "phone": "2616412296", "address": "lencinas 595, Godoy Cruz, Monoblock D, Dpto 10", "work_type": "Minorista", "notes": "martinnicolasduran5@gmail.com", "created_at": "2025-02-14"},
+                {"id": "c23", "name": "Facundo Badaloni", "phone": "2613053100", "address": "Aristides 751, Ciudad de Mendoza", "work_type": "Minorista", "notes": "facundobadaloni6@gmail.com", "created_at": "2025-02-14"},
+                {"id": "c24", "name": "Gabriela Díaz", "phone": "2616709395", "address": "Beltran 316 Godoy Cruz \nEntre Cabildo Abierto y Reconquista", "work_type": "Minorista", "notes": "amarenadulces@yahoo.com.ar", "created_at": "2025-02-14"},
+                {"id": "c25", "name": "Brian Stubbia", "phone": "2612478286", "address": "Julio A Roca 379", "work_type": "Minorista", "notes": "brianstubbia35@gmail.com", "created_at": "2025-02-14"},
+                {"id": "c26", "name": "Micaela Flores", "phone": "2616376345", "address": "Catamarca 20 ciudad", "work_type": "Minorista", "notes": "aylinmicaela26@gmail.com", "created_at": "2025-02-14"},
+                {"id": "c27", "name": "Cactus Café", "phone": "2613069984", "address": "Pascual Segura 1076, Godoy Cruz", "work_type": "Cafetería", "notes": "cactuscafemza@gmail.com", "created_at": "2025-02-14"},
+                {"id": "c28", "name": "Federico Jesús Soler Nonino", "phone": "2615710100", "address": "Barrio Natania 25 mzna G casa 10", "work_type": "Minorista", "notes": "federico.soler.arq@gmail.com", "created_at": "2025-02-14"},
+                {"id": "c29", "name": "Hernán cuello", "phone": "2616901935", "address": "Juan b justo 88 de ciudad", "work_type": "Minorista", "notes": "chichocapo_9@hotmail.com", "created_at": "2025-02-14"},
+                {"id": "c30", "name": "MijuBurgers", "phone": "2617788880", "address": "Pedro J. Godoy 880", "work_type": "Restaurante", "notes": "mijuburgers@gmail.com", "created_at": "2025-02-14"},
+                {"id": "c31", "name": "Adrián Milano", "phone": "1162939506", "address": "Martin Zapata 407 Mendoza ciudad", "work_type": "Restaurante", "notes": "lapeste.victor@gmail.com", "created_at": "2025-02-14"},
+                {"id": "c32", "name": "Savor Brasil", "phone": "2615710100", "address": "El Abasto de Chacras", "work_type": "Restaurante", "notes": "argentina@savorbrasil.com", "created_at": "2025-02-14"},
+                {"id": "c33", "name": "Lucas Orosco", "phone": "2617620307", "address": "Pedro j Godoy 880", "work_type": "Minorista", "notes": "lucasorosco11@gmail.com", "created_at": "2025-02-14"},
+                {"id": "c34", "name": "Silvina Natalia", "phone": "2614170250", "address": "San Martin 1665", "work_type": "Minorista", "notes": "silvinanmartinez@hotmail.com", "created_at": "2025-02-14"},
+                {"id": "c35", "name": "Giuliana Bernardi", "phone": "2615177418", "address": "Lamadrid 520 - 5ta Sección- Ciudad de Mendoza", "work_type": "Minorista", "notes": "giulianabernardi99@outlook.com", "created_at": "2025-02-14"},
+                {"id": "c36", "name": "Café 555 colon", "phone": "2612375547", "address": "Calle colon y chile.\nCuidad de Mendoza , justo enfrente del pasaje y al lado de bonafide", "work_type": "Cafetería", "notes": "elpetisodemadrid@gmail.com", "created_at": "2025-02-14"}
             ];
 
             works = [
-                { id: 'w1', client_id: 'c1', description: "Instalación eléctrica completa - Casa 3 ambientes", total_amount: 185000, status: "cobrado", payment_condition: "contado", due_date: "2026-01-25", created_at: "2026-01-10", completed_at: "2026-01-22" },
-                { id: 'w2', client_id: 'c1', description: "Reparación tablero principal + puesta a tierra", total_amount: 67500, status: "terminado", payment_condition: "senal_saldo", due_date: "2026-05-10", created_at: "2026-04-20", completed_at: "2026-05-02" },
-                { id: 'w3', client_id: 'c2', description: "Construcción de pared medianera 8m + revoque", total_amount: 245000, status: "en_curso", payment_condition: "cuotas", due_date: "2026-05-25", created_at: "2026-04-28", completed_at: null },
-                { id: 'w4', client_id: 'c3', description: "Ampliación living + instalación sanitaria", total_amount: 420000, status: "cobrado", payment_condition: "contado", due_date: "2026-03-15", created_at: "2026-02-20", completed_at: "2026-03-10" },
-                { id: 'w5', client_id: 'c4', description: "Diseño y ejecución jardín frontal + riego", total_amount: 158000, status: "terminado", payment_condition: "senal_saldo", due_date: "2026-05-05", created_at: "2026-04-15", completed_at: "2026-04-30" }
+                {"id": "w1", "client_id": "c1", "description": "Croissant x1827, Medialuna 60 gr x1547, Pan Ciabatta x685, Medialuna x305, Pan de campo 2kg x271, Pan de papa 80 gr x220", "total_amount": 2065575, "status": "terminado", "payment_condition": "cuenta_corriente", "due_date": "2026-05-30", "created_at": "2025-02-14", "completed_at": "2026-05-15"},
+                {"id": "w2", "client_id": "c2", "description": "Medialuna 60 gr x5560, Croissant x2008, Pan Ciabatta x106, Envio x31, Shoku Pan x17, Tortita raspada x12", "total_amount": 1980000, "status": "terminado", "payment_condition": "cuenta_corriente", "due_date": "2026-05-30", "created_at": "2025-02-14", "completed_at": "2026-05-15"},
+                {"id": "w3", "client_id": "c3", "description": "Medialuna 60 gr x3959, Tortita raspada x1124, Tortita raspada (Promo) x307, Pan de campo 800 gr x175, New York Rolls Sin Relleno x149, Medialuna x60", "total_amount": 1960225, "status": "terminado", "payment_condition": "cuenta_corriente", "due_date": "2026-05-30", "created_at": "2025-02-14", "completed_at": "2026-05-15"},
+                {"id": "w4", "client_id": "c4", "description": "Medialuna 60 gr x5761, Croissant x1913, Tortita raspada x1798, Shoku Pan x682, Medialuna x126, Envio x29", "total_amount": 1629725, "status": "terminado", "payment_condition": "cuenta_corriente", "due_date": "2026-05-30", "created_at": "2025-02-14", "completed_at": "2026-05-15"},
+                {"id": "w5", "client_id": "c5", "description": "Medialuna 60 gr x2689, Croissant x86, Envio x15", "total_amount": 1353250, "status": "terminado", "payment_condition": "cuenta_corriente", "due_date": "2026-05-30", "created_at": "2025-02-14", "completed_at": "2026-05-15"},
+                {"id": "w6", "client_id": "c6", "description": "Pan Ciabatta x878, Pizza masa madre 4 porc x80, Focaccia Placa Grande 3kg x24, Pan integral de molde x11, Envio x6, Pan semi-integral x4", "total_amount": 1145500, "status": "terminado", "payment_condition": "cuenta_corriente", "due_date": "2026-05-30", "created_at": "2025-02-14", "completed_at": "2026-05-15"},
+                {"id": "w7", "client_id": "c7", "description": "Medialuna 60 gr x2104, Pan Ciabatta x200, Croissant x185, New York Rolls relleno Chocolate x10, New York Rolls Sin Relleno x6, Envio x3", "total_amount": 677500, "status": "cobrado", "payment_condition": "cuenta_corriente", "due_date": "2026-05-30", "created_at": "2025-02-14", "completed_at": "2026-05-15"},
+                {"id": "w8", "client_id": "c8", "description": "Croissant x342, New York Rolls Sin Relleno x248, Palmerita x141, Tortita raspada x50, Pan integral molde Con Semillas x33, Croissant (Promo) x19", "total_amount": 569650, "status": "cobrado", "payment_condition": "cuenta_corriente", "due_date": "2026-05-30", "created_at": "2025-02-14", "completed_at": "2026-05-15"},
+                {"id": "w9", "client_id": "c9", "description": "Medialuna 60 gr x362, Pan Ciabatta x66, Pan de papa 80 gr x52, Pan de papa 60 gr x41, Pan integral de molde x38, Croissant x37", "total_amount": 547075, "status": "terminado", "payment_condition": "cuenta_corriente", "due_date": "2026-05-30", "created_at": "2025-02-14", "completed_at": "2026-05-15"},
+                {"id": "w10", "client_id": "c10", "description": "Medialuna 60 gr x330, Croissant x66, Pan Ciabatta x36, Tortita raspada x2, Palmerita x2, Pizza masa madre 4 porc x1", "total_amount": 318600, "status": "cobrado", "payment_condition": "cuenta_corriente", "due_date": "2026-05-30", "created_at": "2025-02-14", "completed_at": "2026-05-15"},
+                {"id": "w11", "client_id": "c11", "description": "Medialuna 60 gr x544, Croissant x341, Tortita raspada x293, Pan de papa 80 gr x127, Pan Ciabatta x122, Croissant Relleno Diplomata x119", "total_amount": 248100, "status": "terminado", "payment_condition": "cuenta_corriente", "due_date": "2026-05-30", "created_at": "2025-02-14", "completed_at": "2026-05-15"},
+                {"id": "w12", "client_id": "c12", "description": "Croissant x907, Medialuna 60 gr x742, Tortita raspada x334, New York Rolls Sin Relleno x84, New York rolls x14, New York Rolls relleno x6", "total_amount": 232850, "status": "terminado", "payment_condition": "cuenta_corriente", "due_date": "2026-05-30", "created_at": "2025-02-14", "completed_at": "2026-05-15"},
+                {"id": "w13", "client_id": "c13", "description": "Medialuna 60 gr x144, Pizza masa madre 4 porc x10, Chipa Monnoserie x6, Pan Ciabatta x5, Pan de campo 2kg x3, Envio x2", "total_amount": 181800, "status": "terminado", "payment_condition": "cuenta_corriente", "due_date": "2026-05-30", "created_at": "2025-02-14", "completed_at": "2026-05-15"},
+                {"id": "w14", "client_id": "c14", "description": "Pan Ciabatta x303, Focaccia Placa Grande 3kg x10", "total_amount": 117000, "status": "cobrado", "payment_condition": "cuenta_corriente", "due_date": "2026-05-30", "created_at": "2025-02-14", "completed_at": "2026-05-15"},
+                {"id": "w15", "client_id": "c15", "description": "Tortita raspada x276, Medialuna 60 gr x235, Croissant x117, Pan Ciabatta x108, Pizza masa madre 4 porc x31, Dannesa x28", "total_amount": 109150, "status": "terminado", "payment_condition": "cuenta_corriente", "due_date": "2026-05-30", "created_at": "2025-02-14", "completed_at": "2026-05-15"},
+                {"id": "w16", "client_id": "c16", "description": "Medialuna 60 gr x223, Pan Figazza x120, Tortita raspada x98, Croissant x77, New York Rolls Sin Relleno x50, Pan Ciabatta x49", "total_amount": 108000, "status": "terminado", "payment_condition": "cuenta_corriente", "due_date": "2026-05-30", "created_at": "2025-02-14", "completed_at": "2026-05-15"},
+                {"id": "w17", "client_id": "c17", "description": "Medialuna 60 gr x398, Pan Ciabatta x125, Chipa Monnoserie \"\"100 GR\"\" (Promo) x29, Pan de campo 800 gr x25, Pan de campo 2kg x15, Pan de campo x10", "total_amount": 104800, "status": "cobrado", "payment_condition": "cuenta_corriente", "due_date": "2026-05-30", "created_at": "2025-02-14", "completed_at": "2026-05-15"},
+                {"id": "w18", "client_id": "c18", "description": "Dannesa x13, Chipa Monnoserie \"\"100 GR\"\" (Promo) x12, Relleno Diplomata 500 gr x1, Envio x1", "total_amount": 57400, "status": "terminado", "payment_condition": "cuenta_corriente", "due_date": "2026-05-30", "created_at": "2025-02-14", "completed_at": "2026-05-15"}
             ];
 
             payments = [
-                { id: 'p1', work_id: 'w1', amount: 185000, date: "2026-01-22", method: "Efectivo", notes: "Pago completo" },
-                { id: 'p2', work_id: 'w2', amount: 20000, date: "2026-04-25", method: "Transferencia bancaria", notes: "Señal 30%" },
-                { id: 'p3', work_id: 'w4', amount: 420000, date: "2026-03-10", method: "Transferencia bancaria", notes: "Pago total" },
-                { id: 'p4', work_id: 'w5', amount: 79000, date: "2026-04-30", method: "Efectivo", notes: "Señal 50%" }
+                {"id": "p1", "work_id": "w1", "amount": 1886325, "date": "2026-05-15", "method": "Transferencia", "notes": "Pagos acumulados"},
+                {"id": "p2", "work_id": "w2", "amount": 1637000, "date": "2026-05-15", "method": "Transferencia", "notes": "Pagos acumulados"},
+                {"id": "p3", "work_id": "w3", "amount": 1787675, "date": "2026-05-15", "method": "Transferencia", "notes": "Pagos acumulados"},
+                {"id": "p4", "work_id": "w4", "amount": 1502925, "date": "2026-05-15", "method": "Transferencia", "notes": "Pagos acumulados"},
+                {"id": "p5", "work_id": "w5", "amount": 1250750, "date": "2026-05-15", "method": "Transferencia", "notes": "Pagos acumulados"},
+                {"id": "p6", "work_id": "w6", "amount": 982250, "date": "2026-05-15", "method": "Transferencia", "notes": "Pagos acumulados"},
+                {"id": "p7", "work_id": "w7", "amount": 677500, "date": "2026-05-15", "method": "Transferencia", "notes": "Pagos acumulados"},
+                {"id": "p8", "work_id": "w8", "amount": 569650, "date": "2026-05-15", "method": "Transferencia", "notes": "Pagos acumulados"},
+                {"id": "p9", "work_id": "w9", "amount": 463675, "date": "2026-05-15", "method": "Transferencia", "notes": "Pagos acumulados"},
+                {"id": "p10", "work_id": "w10", "amount": 318600, "date": "2026-05-15", "method": "Transferencia", "notes": "Pagos acumulados"},
+                {"id": "p11", "work_id": "w11", "amount": 197250, "date": "2026-05-15", "method": "Transferencia", "notes": "Pagos acumulados"},
+                {"id": "p12", "work_id": "w12", "amount": 137450, "date": "2026-05-15", "method": "Transferencia", "notes": "Pagos acumulados"},
+                {"id": "p13", "work_id": "w13", "amount": 72600, "date": "2026-05-15", "method": "Transferencia", "notes": "Pagos acumulados"},
+                {"id": "p14", "work_id": "w14", "amount": 117000, "date": "2026-05-15", "method": "Transferencia", "notes": "Pagos acumulados"},
+                {"id": "p15", "work_id": "w15", "amount": 59400, "date": "2026-05-15", "method": "Transferencia", "notes": "Pagos acumulados"},
+                {"id": "p16", "work_id": "w16", "amount": 60000, "date": "2026-05-15", "method": "Transferencia", "notes": "Pagos acumulados"},
+                {"id": "p17", "work_id": "w17", "amount": 104800, "date": "2026-05-15", "method": "Transferencia", "notes": "Pagos acumulados"}
             ];
 
-            invoices = [
-                { id: 'i1', work_id: 'w1', afip_number: "0001-00003456", date: "2026-01-23", amount: 185000, notes: "Factura C", photo: "", cae: "12345678901234", tipo: "C" },
-                { id: 'i2', work_id: 'w4', afip_number: "0001-00003987", date: "2026-03-11", amount: 420000, notes: "Factura C", photo: "", cae: "12345678901235", tipo: "C" }
-            ];
+            invoices = [];
 
-            config.reviews_count = 24;
+            config.reviews_count = 0;
             saveToLocalStorage();
         }
 
@@ -676,7 +731,7 @@ function aplicarProducto() {
             filteredWorks.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
             if (filteredWorks.length === 0) {
-                container.innerHTML = `<div class="text-center py-8 text-zinc-400">No hay obras en esta categoría</div>`;
+                container.innerHTML = `<div class="text-center py-8 text-zinc-400">No hay pedidos en esta categoría</div>`;
                 return;
             }
 
@@ -690,9 +745,9 @@ function aplicarProducto() {
                 const overdue = calculateOverdueDays(work);
 
                 let statusHTML = work.status === 'cobrado' ? `<span class="status-badge bg-emerald-100 text-emerald-700">COBRADO</span>` :
-                                work.status === 'terminado' ? `<span class="status-badge bg-amber-100 text-amber-700">TERMINADO</span>` :
-                                work.status === 'en_curso' ? `<span class="status-badge bg-blue-100 text-blue-700">EN CURSO</span>` :
-                                `<span class="status-badge bg-zinc-100 text-zinc-600">PRESUPUESTADO</span>`;
+                                work.status === 'terminado' ? `<span class="status-badge bg-amber-100 text-amber-700">ENTREGADO</span>` :
+                                work.status === 'en_curso' ? `<span class="status-badge bg-blue-100 text-blue-700">EN PREPARACIÓN</span>` :
+                                `<span class="status-badge bg-zinc-100 text-zinc-600">PENDIENTE</span>`;
 
                 const card = document.createElement('div');
                 card.className = `work-card bg-white border border-zinc-200 rounded-3xl p-4 cursor-pointer`;
@@ -773,7 +828,7 @@ function aplicarProducto() {
 
             if (missing.length > 0) {
                 alertContainer.classList.remove('hidden');
-                alertText.innerHTML = `${missing.length} obra(s) cobrada(s) sin factura ARCA.`;
+                alertText.innerHTML = `${missing.length} pedido(s) cobrado(s) sin factura ARCA.`;
             } else {
                 alertContainer.classList.add('hidden');
             }
@@ -785,7 +840,7 @@ function aplicarProducto() {
                     <div><div class="font-medium text-sm">${client.name}</div><div class="text-xs text-rose-600">${work.description}</div></div>
                     <button onclick="showEmitInvoiceModal('${work.id}')" class="text-xs bg-emerald-600 text-white px-4 py-1.5 rounded-2xl font-medium">Emitir Real</button>
                 </div>`;
-            }).join('') : `<div class="text-xs text-emerald-600 py-2">✓ Todas las obras cobradas tienen factura</div>`;
+            }).join('') : `<div class="text-xs text-emerald-600 py-2">✓ Todos los pedidos cobrados tienen factura</div>`;
 
             const invContainer = document.getElementById('invoices-list');
             invContainer.innerHTML = invoices.length === 0 ? `<div class="text-xs text-zinc-400 py-3">Todavía no emitiste facturas</div>` :
@@ -969,19 +1024,19 @@ function aplicarProducto() {
                     </div>
 
                     <div class="space-y-5">
-                        <div><label class="block text-xs font-medium text-zinc-500 mb-1.5">NOMBRE COMPLETO</label><input id="client-name" type="text" class="w-full border border-zinc-200 focus:border-emerald-500 rounded-2xl px-4 py-3 text-sm" placeholder="Juan Pérez" required></div>
+                        <div><label class="block text-xs font-medium text-zinc-500 mb-1.5">NOMBRE COMPLETO</label><input id="client-name" type="text" class="w-full border border-zinc-200 focus:border-emerald-500 rounded-2xl px-4 py-3 text-sm" placeholder="Cafetería Las Heras" required></div>
 
                         <div class="grid grid-cols-2 gap-4">
                             <div><label class="block text-xs font-medium text-zinc-500 mb-1.5">TELÉFONO</label><input id="client-phone" type="tel" class="w-full border border-zinc-200 focus:border-emerald-500 rounded-2xl px-4 py-3 text-sm" value="+54 261 "></div>
-                            <div><label class="block text-xs font-medium text-zinc-500 mb-1.5">TIPO DE TRABAJO</label>
+                            <div><label class="block text-xs font-medium text-zinc-500 mb-1.5">TIPO DE CLIENTE</label>
                                 <select id="client-type" class="w-full border border-zinc-200 focus:border-emerald-500 rounded-2xl px-4 py-3 text-sm">
                                     <option>Mayorista</option><option>Minorista</option><option>Cafetería</option><option>Restaurante</option><option>Consumidor final</option><option>Otro</option>
                                 </select>
                             </div>
                         </div>
 
-                        <div><label class="block text-xs font-medium text-zinc-500 mb-1.5">DIRECCIÓN</label><input id="client-address" type="text" class="w-full border border-zinc-200 focus:border-emerald-500 rounded-2xl px-4 py-3 text-sm" placeholder="Calle Las Heras 1450, Mendoza"></div>
-                        <div><label class="block text-xs font-medium text-zinc-500 mb-1.5">NOTAS</label><textarea id="client-notes" class="w-full border border-zinc-200 focus:border-emerald-500 rounded-3xl px-4 py-3 text-sm h-16" placeholder="Cliente recurrente..."></textarea></div>
+                        <div><label class="block text-xs font-medium text-zinc-500 mb-1.5">DIRECCIÓN</label><input id="client-address" type="text" class="w-full border border-zinc-200 focus:border-emerald-500 rounded-2xl px-4 py-3 text-sm" placeholder="Av. San Martín 890, Mendoza"></div>
+                        <div><label class="block text-xs font-medium text-zinc-500 mb-1.5">NOTAS</label><textarea id="client-notes" class="w-full border border-zinc-200 focus:border-emerald-500 rounded-3xl px-4 py-3 text-sm h-16" placeholder="Reparto martes y viernes..."></textarea></div>
                     </div>
 
                     <div class="flex gap-3 mt-8">
@@ -1023,7 +1078,7 @@ function aplicarProducto() {
             const html = `
                 <div class="p-6">
                     <div class="flex justify-between items-center mb-6">
-                        <div class="font-semibold text-2xl">Nuevo trabajo</div>
+                        <div class="font-semibold text-2xl">Nuevo pedido</div>
                         <button onclick="hideModal()" class="text-2xl text-zinc-400">×</button>
                     </div>
 
@@ -1034,7 +1089,7 @@ function aplicarProducto() {
         <option value="">— Elegí un producto —</option>
         ${PRODUCTOS.map((p, i) => `<option value="${i}">${p.nombre} — $${p.precio.toLocaleString('es-AR')}</option>`).join('')}
     </select>
-</div> <div><label class="block text-xs font-medium text-zinc-500 mb-1.5">DESCRIPCIÓN</label><textarea id="work-desc" class="w-full border border-zinc-200 focus:border-emerald-500 rounded-3xl px-4 py-3 text-sm h-20" placeholder="Instalación eléctrica completa..." required></textarea></div>
+</div> <div><label class="block text-xs font-medium text-zinc-500 mb-1.5">DESCRIPCIÓN</label><textarea id="work-desc" class="w-full border border-zinc-200 focus:border-emerald-500 rounded-3xl px-4 py-3 text-sm h-20" placeholder="Detalle del pedido..." required></textarea></div>
 
                         <div class="grid grid-cols-2 gap-4">
                             <div><label class="block text-xs font-medium text-zinc-500 mb-1.5">MONTO TOTAL ($)</label><input id="work-amount" type="number" class="w-full border border-zinc-200 focus:border-emerald-500 rounded-2xl px-4 py-3 text-sm" placeholder="150000" required></div>
@@ -1050,7 +1105,7 @@ function aplicarProducto() {
 
                     <div class="flex gap-3 mt-8">
                         <button onclick="hideModal()" class="flex-1 py-3.5 border border-zinc-200 rounded-3xl font-semibold text-sm">Cancelar</button>
-                        <button onclick="createNewWork()" class="flex-1 py-3.5 bg-emerald-600 text-white rounded-3xl font-semibold text-sm">Crear trabajo</button>
+                        <button onclick="createNewWork()" class="flex-1 py-3.5 bg-emerald-600 text-white rounded-3xl font-semibold text-sm">Registrar pedido</button>
                     </div>
                 </div>
             `;
@@ -1081,7 +1136,7 @@ function aplicarProducto() {
             renderWorksList(currentFilter);
             updateKPIs();
             renderPendingList();
-            showToast("Trabajo creado exitosamente");
+            showToast("Pedido registrado");
         }
 
         function showWorkDetail(workId) {
@@ -1104,7 +1159,7 @@ function aplicarProducto() {
                     <div class="flex items-center justify-between mb-6">
                         <div><div class="text-xs text-zinc-500">MONTO TOTAL</div><div class="text-3xl font-semibold tracking-tighter">${formatCurrency(work.total_amount)}</div></div>
                         <div class="text-right">
-                            <span class="status-badge ${work.status === 'cobrado' ? 'bg-emerald-100 text-emerald-700' : work.status === 'terminado' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}">${work.status.toUpperCase()}</span>
+                            <span class="status-badge ${work.status === 'cobrado' ? 'bg-emerald-100 text-emerald-700' : work.status === 'terminado' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}">${({presupuestado:'PENDIENTE',en_curso:'EN PREPARACIÓN',terminado:'ENTREGADO',cobrado:'COBRADO'})[work.status]||work.status.toUpperCase()}</span>
                         </div>
                     </div>
 
@@ -1114,7 +1169,7 @@ function aplicarProducto() {
                     </div>
 
                     <div class="mb-6 flex gap-2">
-                        ${work.status === 'presupuestado' ? `<button onclick="advanceWorkStatus('${workId}', 'en_curso'); hideModal()" class="flex-1 py-2 text-xs bg-blue-600 text-white rounded-2xl font-medium">Iniciar trabajo</button>` : ''}
+                        ${work.status === 'presupuestado' ? `<button onclick="advanceWorkStatus('${workId}', 'en_curso'); hideModal()" class="flex-1 py-2 text-xs bg-blue-600 text-white rounded-2xl font-medium">Preparar pedido</button>` : ''}
                         ${work.status === 'en_curso' ? `<button onclick="advanceWorkStatus('${workId}', 'terminado'); hideModal()" class="flex-1 py-2 text-xs bg-amber-600 text-white rounded-2xl font-medium">Marcar terminado</button>` : ''}
                         ${pending === 0 && work.status !== 'cobrado' ? `<button onclick="advanceWorkStatus('${workId}', 'cobrado'); hideModal()" class="flex-1 py-2 text-xs bg-emerald-600 text-white rounded-2xl font-medium">Marcar cobrado</button>` : ''}
                     </div>
@@ -1158,7 +1213,7 @@ function aplicarProducto() {
             renderWorksList(currentFilter);
             updateKPIs();
             renderAgenda();
-            showToast(newStatus === 'cobrado' ? "¡Trabajo marcado como cobrado!" : "Estado actualizado");
+            showToast(newStatus === 'cobrado' ? "¡Pedido marcado como cobrado!" : "Estado actualizado");
         }
 
         function showPaymentModal(workId) {
@@ -1252,7 +1307,7 @@ function aplicarProducto() {
 
         function showQuickPaymentModal() {
             const pendingWorks = works.filter(w => getPendingForWork(w) > 0);
-            if (pendingWorks.length === 0) { showToast("No hay trabajos con saldo pendiente"); return; }
+            if (pendingWorks.length === 0) { showToast("No hay pedidos con saldo pendiente"); return; }
 
             const options = pendingWorks.map(w => {
                 const client = getClientById(w.client_id);
@@ -1262,7 +1317,7 @@ function aplicarProducto() {
             const html = `
                 <div class="p-6">
                     <div class="font-semibold text-xl mb-4">Cobro rápido</div>
-                    <div class="mb-4"><label class="block text-xs font-medium text-zinc-500 mb-1.5">SELECCIONAR TRABAJO</label><select id="quick-work" class="w-full border border-zinc-200 focus:border-emerald-500 rounded-2xl px-4 py-3 text-sm">${options}</select></div>
+                    <div class="mb-4"><label class="block text-xs font-medium text-zinc-500 mb-1.5">SELECCIONAR PEDIDO</label><select id="quick-work" class="w-full border border-zinc-200 focus:border-emerald-500 rounded-2xl px-4 py-3 text-sm">${options}</select></div>
                     <div class="mb-4"><label class="block text-xs font-medium text-zinc-500 mb-1.5">MONTO</label><input id="quick-amount" type="number" class="w-full border border-zinc-200 focus:border-emerald-500 rounded-2xl px-4 py-3.5 text-2xl font-semibold"></div>
 
                     <div class="grid grid-cols-2 gap-4 mb-4">
@@ -1614,7 +1669,7 @@ function aplicarProducto() {
                     </div>
 
                     <div style="margin-bottom:15px; padding:15px; background:#f8fafc; border-radius:12px;">
-                        <div><strong>Trabajo:</strong> ${work.description}</div>
+                        <div><strong>Pedido:</strong> ${work.description}</div>
                         <div style="margin-top:10px; font-size:18px;"><strong>Total:</strong> ${formatCurrency(work.total_amount)}</div>
                         <div style="margin-top:8px; font-size:18px;"><strong>Pagado:</strong> ${formatCurrency(paid)}</div>
                         ${pending > 0 ? `<div style="margin-top:8px; font-size:18px; color:#b91c1c;"><strong>Saldo pendiente:</strong> ${formatCurrency(pending)}</div>` : `<div style="margin-top:8px; font-size:18px; color:#059669; font-weight:700;">¡PAGO COMPLETO! ✓</div>`}
@@ -1696,7 +1751,7 @@ function aplicarProducto() {
                     <div class="flex-1 pr-3"><div class="text-sm font-medium line-clamp-1">${w.description}</div><div class="text-xs text-zinc-500">${formatDate(w.created_at)}</div></div>
                     <div class="text-right"><div class="font-semibold">${formatCurrency(w.total_amount)}</div>${pending > 0 ? `<div class="text-xs text-amber-600">${formatCurrency(pending)} pendiente</div>` : `<div class="text-xs text-emerald-600">Pagado</div>`}</div>
                 </div>`;
-            }).join('') : `<div class="py-4 text-xs text-zinc-400 text-center">Este cliente todavía no tiene obras</div>`;
+            }).join('') : `<div class="py-4 text-xs text-zinc-400 text-center">Este cliente todavía no tiene pedidos</div>`;
 
             const html = `
                 <div class="p-6">
@@ -1716,7 +1771,7 @@ function aplicarProducto() {
                     </div>
 
                     <div class="mb-4">
-                        <div class="flex justify-between items-center mb-2"><div class="font-medium text-sm">Historial de obras (${clientWorks.length})</div><button onclick="hideModal(); showNewWorkModal(); document.getElementById('work-client').value='${clientId}'" class="text-xs bg-emerald-600 text-white px-3 py-1 rounded-2xl">+ Nueva obra</button></div>
+                        <div class="flex justify-between items-center mb-2"><div class="font-medium text-sm">Historial de pedidos (${clientWorks.length})</div><button onclick="hideModal(); showNewWorkModal(); document.getElementById('work-client').value='${clientId}'" class="text-xs bg-emerald-600 text-white px-3 py-1 rounded-2xl">+ Nuevo pedido</button></div>
                         <div class="max-h-[220px] overflow-auto border border-zinc-100 rounded-3xl p-1">${worksHTML}</div>
                     </div>
 
@@ -1736,7 +1791,7 @@ function aplicarProducto() {
             if (pendingWorks.length === 1) { showPaymentModal(pendingWorks[0].id); }
             else {
                 const options = pendingWorks.map(w => `<option value="${w.id}">${w.description} (${formatCurrency(getPendingForWork(w))})</option>`).join('');
-                const html = `<div class="p-6"><div class="font-semibold text-xl mb-4">Seleccionar obra para cobrar</div><select id="client-work-select" class="w-full border border-zinc-200 focus:border-emerald-500 rounded-2xl px-4 py-3 text-sm mb-6">${options}</select><div class="flex gap-3"><button onclick="hideModal()" class="flex-1 py-3 border border-zinc-200 rounded-3xl font-semibold text-sm">Cancelar</button><button onclick="selectWorkForPayment()" class="flex-1 py-3 bg-emerald-600 text-white rounded-3xl font-semibold text-sm">Continuar</button></div></div>`;
+                const html = `<div class="p-6"><div class="font-semibold text-xl mb-4">Seleccionar pedido para cobrar</div><select id="client-work-select" class="w-full border border-zinc-200 focus:border-emerald-500 rounded-2xl px-4 py-3 text-sm mb-6">${options}</select><div class="flex gap-3"><button onclick="hideModal()" class="flex-1 py-3 border border-zinc-200 rounded-3xl font-semibold text-sm">Cancelar</button><button onclick="selectWorkForPayment()" class="flex-1 py-3 bg-emerald-600 text-white rounded-3xl font-semibold text-sm">Continuar</button></div></div>`;
                 showModal(html);
             }
         }
@@ -1874,7 +1929,7 @@ function aplicarProducto() {
         function toggleDarkMode() {
             config.dark_mode = !config.dark_mode;
             document.documentElement.classList.toggle('dark', config.dark_mode);
-            localStorage.setItem('gb_config_v3', JSON.stringify(config));
+            localStorage.setItem('gb_config_mn1', JSON.stringify(config));
             showToast(config.dark_mode ? "Modo oscuro activado" : "Modo claro activado");
         }
 
@@ -1893,11 +1948,11 @@ function aplicarProducto() {
 
         function resetDemoData() {
             if (!confirm("¿Resetear todos los datos?")) return;
-            localStorage.removeItem('gb_clients_v3');
-            localStorage.removeItem('gb_works_v3');
-            localStorage.removeItem('gb_payments_v3');
-            localStorage.removeItem('gb_invoices_v3');
-            localStorage.removeItem('gb_config_v3');
+            localStorage.removeItem('gb_clients_mn1');
+            localStorage.removeItem('gb_works_mn1');
+            localStorage.removeItem('gb_payments_mn1');
+            localStorage.removeItem('gb_invoices_mn1');
+            localStorage.removeItem('gb_config_mn1');
             location.reload();
         }
 
