@@ -427,7 +427,41 @@
         };
 
         let currentFilter = 'all';
+// ==================== CATÁLOGO DE PRODUCTOS ====================
+const PRODUCTOS = [
+    { nombre: "Pizza massa madre", precio: 2000 },
+    { nombre: "Sandwich Ciabatta", precio: 2000 },
+    { nombre: "Medialuna 60g", precio: 800 },
+    { nombre: "Medialuna 70g", precio: 945 },
+    { nombre: "Pan Ciabatta Mayorista", precio: 280 },
+    { nombre: "Baguette", precio: 1500 },
+    { nombre: "Focaccia", precio: 2000 },
+    { nombre: "Pan Brioche", precio: 4000 },
+    { nombre: "Pan Ciabatta", precio: 1000 },
+    { nombre: "Pan de campo", precio: 2500 },
+    { nombre: "Panettone", precio: 20000 },
+    { nombre: "Pan Integral de molde", precio: 2800 },
+    { nombre: "Pan semi-integral", precio: 2500 },
+    { nombre: "Shoku Pan", precio: 2000 },
+    { nombre: "Tortita raspada", precio: 500 },
+    { nombre: "Croissant", precio: 1800 },
+    { nombre: "Croissant relleno", precio: 2500 },
+    { nombre: "Dannesa", precio: 2500 },
+    { nombre: "Medialuna", precio: 1800 },
+    { nombre: "Monno Box", precio: 15000 },
+    { nombre: "New York rolls", precio: 2500 },
+    { nombre: "Pain au chocolat", precio: 2500 },
+    { nombre: "Palmerita", precio: 1000 }
+];
 
+function aplicarProducto() {
+    const sel = document.getElementById('work-product');
+    if (!sel || sel.value === '') return;
+    const p = PRODUCTOS[parseInt(sel.value, 10)];
+    if (!p) return;
+    document.getElementById('work-desc').value = p.nombre;
+    document.getElementById('work-amount').value = p.precio;
+}
         // ==================== UTILITIES ====================
         function formatCurrency(amount) {
             return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 }).format(amount);
@@ -941,7 +975,7 @@
                             <div><label class="block text-xs font-medium text-zinc-500 mb-1.5">TELÉFONO</label><input id="client-phone" type="tel" class="w-full border border-zinc-200 focus:border-emerald-500 rounded-2xl px-4 py-3 text-sm" value="+54 261 "></div>
                             <div><label class="block text-xs font-medium text-zinc-500 mb-1.5">TIPO DE TRABAJO</label>
                                 <select id="client-type" class="w-full border border-zinc-200 focus:border-emerald-500 rounded-2xl px-4 py-3 text-sm">
-                                    <option>Electricista</option><option>Albañil</option><option>Plomero</option><option>Pintor</option><option>Constructor</option><option>Paisajista</option><option>Otro</option>
+                                    <option>Mayorista</option><option>Minorista</option><option>Cafetería</option><option>Restaurante</option><option>Consumidor final</option><option>Otro</option>
                                 </select>
                             </div>
                         </div>
@@ -995,7 +1029,12 @@
 
                     <div class="space-y-5">
                         <div><label class="block text-xs font-medium text-zinc-500 mb-1.5">CLIENTE</label><select id="work-client" class="w-full border border-zinc-200 focus:border-emerald-500 rounded-2xl px-4 py-3 text-sm">${options}</select></div>
-                        <div><label class="block text-xs font-medium text-zinc-500 mb-1.5">DESCRIPCIÓN</label><textarea id="work-desc" class="w-full border border-zinc-200 focus:border-emerald-500 rounded-3xl px-4 py-3 text-sm h-20" placeholder="Instalación eléctrica completa..." required></textarea></div>
+                       <div><label class="block text-xs font-medium text-zinc-500 mb-1.5">PRODUCTO</label>
+    <select id="work-product" onchange="aplicarProducto()" class="w-full border border-zinc-200 focus:border-emerald-500 rounded-2xl px-4 py-3 text-sm">
+        <option value="">— Elegí un producto —</option>
+        ${PRODUCTOS.map((p, i) => `<option value="${i}">${p.nombre} — $${p.precio.toLocaleString('es-AR')}</option>`).join('')}
+    </select>
+</div> <div><label class="block text-xs font-medium text-zinc-500 mb-1.5">DESCRIPCIÓN</label><textarea id="work-desc" class="w-full border border-zinc-200 focus:border-emerald-500 rounded-3xl px-4 py-3 text-sm h-20" placeholder="Instalación eléctrica completa..." required></textarea></div>
 
                         <div class="grid grid-cols-2 gap-4">
                             <div><label class="block text-xs font-medium text-zinc-500 mb-1.5">MONTO TOTAL ($)</label><input id="work-amount" type="number" class="w-full border border-zinc-200 focus:border-emerald-500 rounded-2xl px-4 py-3 text-sm" placeholder="150000" required></div>
