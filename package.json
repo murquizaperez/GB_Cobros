@@ -3,6 +3,6 @@
   "version": "1.0.0",
   "private": true,
   "dependencies": {
-    "@afipsdk/afip.js": "^1.3.0"
+    "@arcasdk/core": "latest"
   }
 }
