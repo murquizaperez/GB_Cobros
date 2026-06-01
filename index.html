@@ -414,17 +414,20 @@
         let invoices = [];
         let lastEmittedInvoice = null;
         let config = {
-            company_name: "GB Consulting",
+            company_name: "Monnoserie",
             logo: "",
-            phone: "+54 9 261 502 3915",
-            address: "Edificio Avatar, Palmares Valley, Mendoza - Oficina 8, Piso 4",
+            phone: "",
+            address: "Mendoza, Argentina",
             cuit: "",
-            google_review_url: "https://g.page/r/Cf8fK8vN8vN8/review",
+            google_review_url: "",
             pin: "1234",
             reviews_count: 0,
             dark_mode: false,
             punto_venta: "0001"   // Debe ser un PV dado de alta como "Monotributo - Web Services" en ARCA
         };
+
+        // Planilla Monnoserie por defecto (se puede cambiar desde Ajustes ⚙️)
+        const GB_DEFAULT_SHEET_ID = "1wxNODVsBQPW2OhkR2azbG1kQq5s27H_WSxpu_9mqDc8";
 
         let currentFilter = 'all';
 // ==================== CATÁLOGO DE PRODUCTOS ====================
@@ -1053,7 +1056,7 @@ function aplicarProducto() {
             const name = document.getElementById('client-name').value.trim();
             if (!name) { alert("El nombre es obligatorio"); return; }
 
-            clients.unshift({
+            const nuevoCliente = {
                 id: 'c' + Date.now(),
                 name,
                 phone: document.getElementById('client-phone').value.trim(),
@@ -1061,9 +1064,11 @@ function aplicarProducto() {
                 work_type: document.getElementById('client-type').value,
                 notes: document.getElementById('client-notes').value.trim(),
                 created_at: getToday()
-            });
+            };
+            clients.unshift(nuevoCliente);
 
             saveToLocalStorage();
+            GBDB.create('clientes', nuevoCliente);
             hideModal();
             renderClientsList();
             updateKPIs();
@@ -1119,7 +1124,7 @@ function aplicarProducto() {
 
             if (!description || !amount) { alert("Completá descripción y monto"); return; }
 
-            works.unshift({
+            const nuevoPedido = {
                 id: 'w' + Date.now(),
                 client_id: clientId,
                 description,
@@ -1129,9 +1134,11 @@ function aplicarProducto() {
                 due_date: document.getElementById('work-due').value,
                 created_at: getToday(),
                 completed_at: null
-            });
+            };
+            works.unshift(nuevoPedido);
 
             saveToLocalStorage();
+            GBDB.create('obras', nuevoPedido);
             hideModal();
             renderWorksList(currentFilter);
             updateKPIs();
@@ -1208,6 +1215,7 @@ function aplicarProducto() {
             if (newStatus === 'cobrado') work.completed_at = work.completed_at || getToday();
 
             saveToLocalStorage();
+            GBDB.update('obras', { id: work.id, status: work.status, completed_at: work.completed_at || '' });
             hideModal();
             renderPendingList();
             renderWorksList(currentFilter);
@@ -1262,17 +1270,20 @@ function aplicarProducto() {
 
             const work = getWorkById(workId);
 
-            payments.push({
+            const nuevoCobro = {
                 id: 'p' + Date.now(),
                 work_id: workId,
                 amount,
                 date: document.getElementById('payment-date').value,
                 method: document.getElementById('payment-method').value,
                 notes: ""
-            });
+            };
+            payments.push(nuevoCobro);
 
             updateWorkStatus(work);
             saveToLocalStorage();
+            GBDB.create('cobros', nuevoCobro);
+            GBDB.update('obras', { id: work.id, status: work.status, completed_at: work.completed_at || '' });
             hideModal();
 
             renderPendingList();
@@ -1351,18 +1362,21 @@ function aplicarProducto() {
 
             if (!workId || !amount) { alert("Completá los datos"); return; }
 
-            payments.push({
+            const nuevoCobroRapido = {
                 id: 'p' + Date.now(),
                 work_id: workId,
                 amount,
                 date: document.getElementById('quick-date').value,
                 method: document.getElementById('quick-method').value,
                 notes: "Cobro rápido"
-            });
+            };
+            payments.push(nuevoCobroRapido);
 
             const work = getWorkById(workId);
             updateWorkStatus(work);
             saveToLocalStorage();
+            GBDB.create('cobros', nuevoCobroRapido);
+            GBDB.update('obras', { id: work.id, status: work.status, completed_at: work.completed_at || '' });
             hideModal();
 
             renderPendingList();
@@ -1532,6 +1546,7 @@ function aplicarProducto() {
                 invoices.unshift(newInvoice);
                 lastEmittedInvoice = newInvoice;
                 saveToLocalStorage();
+                GBDB.create('facturas_gb', newInvoice);
 
                 document.getElementById('modal-content').innerHTML = `
                     <div class="p-6 text-center">
@@ -1634,8 +1649,8 @@ function aplicarProducto() {
                 doc.setFontSize(9);
                 doc.setTextColor(120);
                 doc.text("Documento válido como factura electrónica según RG ARCA - Monotributo Factura C", 20, 125);
-                doc.text("GB Consulting • Edificio Avatar, Palmares Valley, Mendoza - Oficina 8, Piso 4", 20, 132);
-                doc.text("Tel: +54 9 261 502 3915 • gbconsultoria.com.ar", 20, 139);
+                doc.text((config.company_name || "Monnoserie") + " • Panadería Artesanal — Mendoza, Argentina", 20, 132);
+                doc.text(config.phone ? ("Tel: " + config.phone) : "Monnoserie · Cobros", 20, 139);
 
                 if (qrImg) {
                     try { doc.addImage(qrImg, 'PNG', 150, 95, 45, 45); } catch (_) {}
@@ -1680,7 +1695,7 @@ function aplicarProducto() {
                     </div>
 
                     <div style="text-align:center; margin-top:25px; font-size:11px; color:#999;">
-                        GB Cobros v3.5 • gbconsultoria.com.ar
+                        Monnoserie · Cobros
                     </div>
                 </div>
 
@@ -1828,6 +1843,20 @@ function aplicarProducto() {
                         </div>
 
                         <div>
+                            <div class="text-xs font-medium text-zinc-500 mb-2">SINCRONIZACIÓN (GOOGLE SHEETS)</div>
+                            <label class="block text-xs text-zinc-500 mb-1">URL del GAS Web App (/exec)</label>
+                            <input id="config-gas-url" type="url" value="${GBDB.getConfig().url || ''}" placeholder="https://script.google.com/macros/s/.../exec" class="w-full border border-zinc-200 focus:border-emerald-500 rounded-2xl px-4 py-3 text-sm">
+                            <label class="block text-xs text-zinc-500 mb-1 mt-3">Sheet ID</label>
+                            <input id="config-sheet-id" type="text" value="${GBDB.getConfig().sheetId || GB_DEFAULT_SHEET_ID}" class="w-full border border-zinc-200 focus:border-emerald-500 rounded-2xl px-4 py-3 text-sm">
+                            <div class="flex gap-2 mt-3">
+                                <button onclick="gbTestConnection()" class="flex-1 py-2.5 border border-emerald-200 text-emerald-700 rounded-2xl text-xs font-semibold">Probar conexión</button>
+                                <button onclick="gbSyncNow()" class="flex-1 py-2.5 bg-emerald-600 text-white rounded-2xl text-xs font-semibold">Sincronizar ahora</button>
+                            </div>
+                            <button onclick="gbUploadLocal()" class="w-full mt-2 py-2.5 border border-zinc-200 text-zinc-600 rounded-2xl text-xs font-semibold">⬆ Subir datos locales a la planilla</button>
+                            <div id="gb-sync-status" class="text-[11px] text-zinc-400 mt-2">${GBDB.configured() ? ('Conectado · en cola: ' + GBDB.queueSize()) : 'Sin conectar — la app funciona en modo local'}</div>
+                        </div>
+
+                        <div>
                             <div class="text-xs font-medium text-zinc-500 mb-2">POSICIONAMIENTO</div>
                             <label class="block text-xs text-zinc-500 mb-1">Link de reseñas Google</label>
                             <input id="config-google" type="url" value="${config.google_review_url}" class="w-full border border-zinc-200 focus:border-emerald-500 rounded-2xl px-4 py-3 text-sm">
@@ -1860,11 +1889,82 @@ function aplicarProducto() {
             config.pin = document.getElementById('config-pin').value.trim() || "1234";
             config.punto_venta = document.getElementById('config-pv').value.trim() || "0001";
 
+            // Conexión a la planilla (Google Sheets vía GAS Web App)
+            const gasUrl = document.getElementById('config-gas-url').value.trim();
+            const sheetId = document.getElementById('config-sheet-id').value.trim() || GB_DEFAULT_SHEET_ID;
+            const eraConfigurado = GBDB.configured();
+            if (gasUrl) GBDB.configure({ url: gasUrl, sheetId: sheetId });
+
             saveToLocalStorage();
             hideModal();
             updateHeader();
             updateGreeting();
             showToast("Configuración actualizada");
+
+            // Si recién se conectó, traer datos de la planilla
+            if (gasUrl && !eraConfigurado) syncFromSheet({ toast: true });
+        }
+
+        async function gbTestConnection() {
+            const status = document.getElementById('gb-sync-status');
+            const url = document.getElementById('config-gas-url').value.trim();
+            const sheetId = document.getElementById('config-sheet-id').value.trim() || GB_DEFAULT_SHEET_ID;
+            if (!url) { if (status) status.textContent = 'Pegá primero la URL /exec del GAS Web App'; return; }
+            GBDB.configure({ url: url, sheetId: sheetId });
+            if (status) status.textContent = 'Probando…';
+            try {
+                const r = await GBDB.ping();
+                if (status) status.textContent = (r && r.ok) ? ('✓ Conexión OK · ' + (r.ts || '')) : ('Respuesta inesperada: ' + JSON.stringify(r));
+            } catch (err) {
+                if (status) status.textContent = '✗ No respondió: ' + String(err) + ' (revisá que esté publicado como "Cualquier usuario")';
+            }
+        }
+
+        async function gbSyncNow() {
+            const status = document.getElementById('gb-sync-status');
+            const url = document.getElementById('config-gas-url').value.trim();
+            const sheetId = document.getElementById('config-sheet-id').value.trim() || GB_DEFAULT_SHEET_ID;
+            if (!url) { if (status) status.textContent = 'Pegá primero la URL /exec'; return; }
+            GBDB.configure({ url: url, sheetId: sheetId });
+            if (status) status.textContent = 'Sincronizando…';
+            await syncFromSheet({ toast: true });
+            if (status) status.textContent = '✓ Sincronizado · en cola: ' + GBDB.queueSize();
+        }
+
+        async function gbUploadLocal() {
+            const status = document.getElementById('gb-sync-status');
+            const url = document.getElementById('config-gas-url').value.trim();
+            const sheetId = document.getElementById('config-sheet-id').value.trim() || GB_DEFAULT_SHEET_ID;
+            if (!url) { if (status) status.textContent = 'Pegá primero la URL /exec'; return; }
+            const ok = confirm(
+                "Subir los datos locales a la planilla:\n\n" +
+                "• " + clients.length + " clientes\n" +
+                "• " + works.length + " pedidos\n" +
+                "• " + payments.length + " cobros\n" +
+                "• " + invoices.length + " facturas\n\n" +
+                "Se escriben en las pestañas clientes / obras / cobros / facturas_gb " +
+                "(las filas con el mismo id se actualizan; no toca las hojas de ventas). ¿Continuar?"
+            );
+            if (!ok) return;
+            GBDB.configure({ url: url, sheetId: sheetId });
+            const lotes = [
+                ['clientes', clients], ['obras', works],
+                ['cobros', payments], ['facturas_gb', invoices]
+            ];
+            try {
+                let resumen = [];
+                for (const [tabla, filas] of lotes) {
+                    if (!filas.length) continue;
+                    if (status) status.textContent = 'Subiendo ' + tabla + '… (' + filas.length + ')';
+                    const r = await GBDB.bulkUpsert(tabla, filas);
+                    resumen.push(tabla + ': +' + ((r && r.created) || 0) + ' / ↻' + ((r && r.updated) || 0));
+                }
+                if (status) status.textContent = '✓ Subido — ' + resumen.join(' · ');
+                showToast("Datos locales subidos a la planilla");
+            } catch (err) {
+                if (status) status.textContent = '✗ Falló la subida: ' + String(err);
+                showToast("No se pudo subir — revisá la conexión");
+            }
         }
 
         function showPINModal() {
@@ -1969,6 +2069,157 @@ function aplicarProducto() {
             }, 1500);
         }
 
+        /* ====================================================================
+           GBDB · Adaptador offline-first  (frontend  ↔  GAS Web App  ↔  Sheet)
+           Mapeo de tablas:
+             clients  ↔ clientes      works ↔ obras
+             payments ↔ cobros        invoices ↔ facturas_gb
+           Lectura: JSONP (GET, sin CORS).  Escritura: POST text/plain (sin preflight).
+           Si no hay conexión o no está configurado, encola en localStorage.
+        ==================================================================== */
+        const GBDB = (function () {
+            const CFG_KEY = 'gb_gas_cfg_mn1';
+            const QUEUE_KEY = 'gb_sync_queue_mn1';
+            let cfg = null;
+            try { cfg = JSON.parse(localStorage.getItem(CFG_KEY) || 'null'); } catch (_) {}
+
+            const bus = document.createElement('div');
+            function on(ev, fn) { bus.addEventListener(ev, e => fn(e.detail)); }
+            function emit(ev, detail) { bus.dispatchEvent(new CustomEvent(ev, { detail: detail })); }
+
+            function configured() { return !!(cfg && cfg.url); }
+            function getConfig() { return cfg || { url: '', sheetId: '' }; }
+            function configure(c) {
+                cfg = Object.assign({}, cfg || {}, c);
+                localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
+                emit('config', cfg);
+                return cfg;
+            }
+
+            // ---- lectura cross-origin vía JSONP ----
+            function jsonp(params) {
+                return new Promise((resolve, reject) => {
+                    if (!configured()) return reject(new Error('GBDB no configurado'));
+                    const cb = 'gbcb_' + Math.random().toString(36).slice(2);
+                    const s = document.createElement('script');
+                    const q = new URLSearchParams(Object.assign({}, params, { callback: cb })).toString();
+                    const timer = setTimeout(() => { cleanup(); reject(new Error('timeout')); }, 20000);
+                    function cleanup() { clearTimeout(timer); try { delete window[cb]; } catch (_) { window[cb] = undefined; } s.remove(); }
+                    window[cb] = (data) => { cleanup(); resolve(data); };
+                    s.onerror = () => { cleanup(); reject(new Error('network')); };
+                    s.src = cfg.url + (cfg.url.indexOf('?') > -1 ? '&' : '?') + q;
+                    document.body.appendChild(s);
+                });
+            }
+
+            // ---- escritura POST text/plain (sin preflight) ----
+            async function post(body) {
+                if (!configured()) throw new Error('GBDB no configurado');
+                const res = await fetch(cfg.url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify(body),
+                    redirect: 'follow'
+                });
+                return res.json();
+            }
+
+            function list(table) { return jsonp({ action: 'list', table: table }); }
+            function ping() { return jsonp({ action: 'ping' }); }
+
+            // ---- cola offline ----
+            function loadQueue() { try { return JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]'); } catch (_) { return []; } }
+            function saveQueue(q) { localStorage.setItem(QUEUE_KEY, JSON.stringify(q)); emit('queue-changed', { size: q.length }); }
+            function enqueue(op) { const q = loadQueue(); q.push(op); saveQueue(q); }
+            function queueSize() { return loadQueue().length; }
+
+            async function write(action, table, payload) {
+                const op = Object.assign({ action: action, table: table, _ts: Date.now() }, payload);
+                if (!configured() || !navigator.onLine) { enqueue(op); return { queued: true }; }
+                try {
+                    const r = await post(op);
+                    emit('sync', { action: action, table: table });
+                    return r;
+                } catch (err) {
+                    enqueue(op);
+                    emit('error', { action: action, table: table, error: String(err) });
+                    return { queued: true, error: String(err) };
+                }
+            }
+
+            function create(table, data) { return write('create', table, { data: data }); }
+            function update(table, data) { return write('update', table, { data: data }); }
+            function remove(table, id) { return write('remove', table, { id: id }); }
+            // Subida masiva directa (no usa la cola: es una acción manual puntual)
+            function bulkUpsert(table, rows) { return post({ action: 'bulk_upsert', table: table, rows: rows }); }
+
+            async function flushQueue() {
+                if (!configured() || !navigator.onLine) return { flushed: 0, remaining: queueSize() };
+                let q = loadQueue(), flushed = 0;
+                while (q.length) {
+                    try { await post(q[0]); q.shift(); saveQueue(q); flushed++; }
+                    catch (err) { emit('error', { error: String(err) }); break; }
+                }
+                if (flushed) emit('sync', { flushed: flushed });
+                return { flushed: flushed, remaining: loadQueue().length };
+            }
+
+            window.addEventListener('online', () => { flushQueue(); });
+
+            return {
+                configure: configure, getConfig: getConfig, configured: configured,
+                ping: ping, list: list, create: create, update: update, remove: remove,
+                bulkUpsert: bulkUpsert, flushQueue: flushQueue, queueSize: queueSize, on: on, emit: emit
+            };
+        })();
+
+        // ---- normalizadores Sheet → estructura interna (coerción de tipos) ----
+        const num = v => { const n = Number(String(v).replace(/[^0-9.\-]/g, '')); return isNaN(n) ? 0 : n; };
+        function normClient(r) {
+            return { id: r.id, name: r.name || '', phone: r.phone || '', address: r.address || '',
+                     work_type: r.work_type || 'Mayorista', notes: r.notes || '', created_at: r.created_at || getToday() };
+        }
+        function normWork(r) {
+            return { id: r.id, client_id: r.client_id || '', description: r.description || '',
+                     total_amount: num(r.total_amount), status: r.status || 'presupuestado',
+                     payment_condition: r.payment_condition || 'contado', due_date: r.due_date || '',
+                     completed_at: r.completed_at || null, created_at: r.created_at || getToday() };
+        }
+        function normPayment(r) {
+            return { id: r.id, work_id: r.work_id || '', amount: num(r.amount), date: r.date || getToday(),
+                     method: r.method || '', notes: r.notes || '' };
+        }
+        function normInvoice(r) {
+            return { id: r.id, work_id: r.work_id || null, afip_number: r.afip_number || '', date: r.date || getToday(),
+                     amount: num(r.amount), notes: r.notes || '', photo: r.photo || '', cae: r.cae || '',
+                     cae_vto: r.cae_vto || '', tipo: r.tipo || 'C', punto_venta: r.punto_venta || '',
+                     qr_url: r.qr_url || '', qr_img: r.qr_img || '' };
+        }
+
+        // ---- sincronización: trae la planilla y reemplaza el cache local ----
+        async function syncFromSheet(opts) {
+            opts = opts || {};
+            if (!GBDB.configured()) return;
+            try {
+                if (opts.toast) showToast("Sincronizando con la planilla…");
+                await GBDB.flushQueue();
+                const [cl, ob, co, fa] = await Promise.all([
+                    GBDB.list('clientes'), GBDB.list('obras'),
+                    GBDB.list('cobros'), GBDB.list('facturas_gb')
+                ]);
+                if (Array.isArray(cl)) clients = cl.filter(r => r && r.id).map(normClient);
+                if (Array.isArray(ob)) works = ob.filter(r => r && r.id).map(normWork);
+                if (Array.isArray(co)) payments = co.filter(r => r && r.id).map(normPayment);
+                if (Array.isArray(fa)) invoices = fa.filter(r => r && r.id).map(normInvoice);
+                saveToLocalStorage();
+                updateAllUI();
+                if (opts.toast) showToast("✓ Datos sincronizados desde Monnoserie");
+            } catch (err) {
+                console.warn('[GBDB] sync falló, sigo en modo local:', err);
+                if (opts.toast) showToast("Sin conexión con la planilla — sigo en modo local");
+            }
+        }
+
         function initApp() {
             loadFromLocalStorage();
 
@@ -1979,18 +2230,21 @@ function aplicarProducto() {
 
             document.getElementById('current-date').textContent = new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
 
+            // Si hay GAS Web App configurado, traer datos en vivo de la planilla
+            if (GBDB.configured()) { syncFromSheet(); }
+
             if (!localStorage.getItem('gb_onboarded_v35')) {
                 setTimeout(() => {
-                    showToast("GB Cobros v3.5 • Conexión directa con ARCA (Factura C Monotributo)");
+                    showToast("Monnoserie · Cobros — Conexión directa con ARCA (Factura C Monotributo)");
                     localStorage.setItem('gb_onboarded_v35', 'true');
                 }, 1500);
             }
 
             checkCDN();
 
-            console.log('%c[GB Cobros v3.5] App iniciada — ARCA directo WSFEV1 (Factura C Monotributo)', 'color:#10b981');
+            console.log('%c[Monnoserie · Cobros] App iniciada — ARCA directo WSFEV1 (Factura C Monotributo)', 'color:#10b981');
 
-            window.GB = { reset: resetDemoData, config: () => showConfigModal() };
+            window.GB = { reset: resetDemoData, config: () => showConfigModal(), sync: () => syncFromSheet({ toast: true }), db: GBDB };
         }
 
         window.onload = initApp;
