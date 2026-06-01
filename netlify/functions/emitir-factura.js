@@ -22,14 +22,27 @@ exports.handler = async (event) => {
   }
 
   try {
-    const data = JSON.parse(event.body);
+   const raw = JSON.parse(event.body);
 
-    if (!data.cuit || !data.puntoVenta || !data.importeTotal) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ success: false, error: 'Faltan datos obligatorios' }),
-      };
-    }
+// Normalizar: acepta formato GB Cobros v3.5 Y formato Monnoserie
+const data = {
+  cuit:         (raw.cuit || raw.emisorCuit || '').replace(/\D/g, ''),
+  puntoVenta:   raw.puntoVenta || raw.punto_venta || 1,
+  importeTotal: raw.importeTotal || raw.importe || raw.amount || 0,
+  concepto:     raw.concepto || raw.notes || 'Servicio',
+  cliente: raw.cliente || {
+    documento: (raw.receptor && raw.receptor.cuit)
+      ? raw.receptor.cuit.replace(/\D/g, '')
+      : 0
+  }
+};
+
+if (!data.cuit || !data.puntoVenta || !data.importeTotal) {
+  return {
+    statusCode: 400,
+    body: JSON.stringify({ success: false, error: 'Faltan datos obligatorios' }),
+  };
+}
 
     const cert = (process.env.AFIP_CERT || '').replace(/\\n/g, '\n');
     const key  = (process.env.AFIP_KEY  || '').replace(/\\n/g, '\n');
@@ -140,16 +153,21 @@ const det0 = (res.response && res.response.FeDetResp &&
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-      body: JSON.stringify({
-        success: true,
-        cae: cae,
-        numeroComprobante:
-          String(ptoVta).padStart(4, '0') + '-' + String(nroAsignado).padStart(8, '0'),
-      fechaVencimiento: det0.CAEFchVto || res.CAEFchVto || res.caeFchVto || '',
-       resultado: resultado || 'A',
-        tipoComprobante: 'C',
-        qrUrl: qrUrl,
-      }),
+     body: JSON.stringify({
+  success: true,
+  cae: cae,
+  numeroComprobante:
+    String(ptoVta).padStart(4, '0') + '-' + String(nroAsignado).padStart(8, '0'),
+  fechaVencimiento: det0.CAEFchVto || res.CAEFchVto || res.caeFchVto || '',
+  resultado: resultado || 'A',
+  tipoComprobante: 'C',
+  qrUrl: qrUrl,
+  // 👇 Estos 4 campos los necesita Monnoserie:
+  numero: String(ptoVta).padStart(4, '0') + '-' + String(nroAsignado).padStart(8, '0'),
+  afip_number: String(ptoVta).padStart(4, '0') + '-' + String(nroAsignado).padStart(8, '0'),
+  cae_vto: det0.CAEFchVto || res.CAEFchVto || '',
+  qr_url: qrUrl,
+}),
     };
 
   } catch (error) {
