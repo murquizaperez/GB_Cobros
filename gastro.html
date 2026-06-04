@@ -233,8 +233,10 @@
 
                 <div class="flex gap-2 mb-4 overflow-x-auto pb-2">
                     <div onclick="filterWorks('all')" class="work-filter px-4 py-1.5 text-xs font-semibold bg-emerald-600 text-white rounded-3xl cursor-pointer whitespace-nowrap active-filter" data-filter="all">Todos</div>
-                    <div onclick="filterWorks('en_curso')" class="work-filter px-4 py-1.5 text-xs font-semibold bg-white border border-zinc-200 rounded-3xl cursor-pointer whitespace-nowrap" data-filter="en_curso">En preparación</div>
-                    <div onclick="filterWorks('terminado')" class="work-filter px-4 py-1.5 text-xs font-semibold bg-white border border-zinc-200 rounded-3xl cursor-pointer whitespace-nowrap" data-filter="terminado">Entregados</div>
+                    <div onclick="filterWorks('pendiente_pago')" class="work-filter px-4 py-1.5 text-xs font-semibold bg-white border border-zinc-200 rounded-3xl cursor-pointer whitespace-nowrap" data-filter="pendiente_pago">Pendiente pago</div>
+                    <div onclick="filterWorks('en_preparacion')" class="work-filter px-4 py-1.5 text-xs font-semibold bg-white border border-zinc-200 rounded-3xl cursor-pointer whitespace-nowrap" data-filter="en_preparacion">En preparación</div>
+                    <div onclick="filterWorks('listo')" class="work-filter px-4 py-1.5 text-xs font-semibold bg-white border border-zinc-200 rounded-3xl cursor-pointer whitespace-nowrap" data-filter="listo">Listos</div>
+                    <div onclick="filterWorks('entregado')" class="work-filter px-4 py-1.5 text-xs font-semibold bg-white border border-zinc-200 rounded-3xl cursor-pointer whitespace-nowrap" data-filter="entregado">Entregados</div>
                     <div onclick="filterWorks('deuda')" class="work-filter px-4 py-1.5 text-xs font-semibold bg-white border border-zinc-200 rounded-3xl cursor-pointer whitespace-nowrap" data-filter="deuda">Con deuda</div>
                 </div>
 
@@ -370,7 +372,7 @@
 
         <!-- BOTTOM NAV -->
         <div class="fixed bottom-0 left-0 right-0 max-w-[480px] mx-auto bg-white border-t border-zinc-100 z-50">
-            <div class="grid grid-cols-6 text-xs">
+            <div class="grid grid-cols-5 text-xs">
                 <div onclick="navigateTo('dashboard')" class="nav-item flex flex-col items-center justify-center py-3 text-emerald-600 cursor-pointer" id="nav-dashboard">
                     <div class="text-xl mb-0.5">🏠</div>
                     <span class="font-medium">Inicio</span>
@@ -391,7 +393,7 @@
                     <div class="text-xl mb-0.5">📋</div>
                     <span class="font-medium">ARCA</span>
                 </div>
-                <div onclick="navigateTo('agenda')" class="nav-item flex flex-col items-center justify-center py-3 text-zinc-500 cursor-pointer" id="nav-agenda">
+                <div onclick="navigateTo('agenda')" class="nav-item hidden flex-col items-center justify-center py-3 text-zinc-500 cursor-pointer" id="nav-agenda">
                     <div class="text-xl mb-0.5">📅</div>
                     <span class="font-medium">Agenda</span>
                 </div>
@@ -494,6 +496,7 @@ function aplicarProducto() {
             if (savedConfig) config = { ...config, ...JSON.parse(savedConfig) };
 
             if (clients.length === 0) seedDemoData();
+            migrateWorks();
         }
 
         function seedDemoData() {
@@ -537,24 +540,24 @@ function aplicarProducto() {
             ];
 
             works = [
-                {"id": "w1", "client_id": "c1", "description": "Croissant x1827, Medialuna 60 gr x1547, Pan Ciabatta x685, Medialuna x305, Pan de campo 2kg x271, Pan de papa 80 gr x220", "total_amount": 2065575, "status": "terminado", "payment_condition": "cuenta_corriente", "due_date": "2026-05-30", "created_at": "2025-02-14", "completed_at": "2026-05-15"},
-                {"id": "w2", "client_id": "c2", "description": "Medialuna 60 gr x5560, Croissant x2008, Pan Ciabatta x106, Envio x31, Shoku Pan x17, Tortita raspada x12", "total_amount": 1980000, "status": "terminado", "payment_condition": "cuenta_corriente", "due_date": "2026-05-30", "created_at": "2025-02-14", "completed_at": "2026-05-15"},
-                {"id": "w3", "client_id": "c3", "description": "Medialuna 60 gr x3959, Tortita raspada x1124, Tortita raspada (Promo) x307, Pan de campo 800 gr x175, New York Rolls Sin Relleno x149, Medialuna x60", "total_amount": 1960225, "status": "terminado", "payment_condition": "cuenta_corriente", "due_date": "2026-05-30", "created_at": "2025-02-14", "completed_at": "2026-05-15"},
-                {"id": "w4", "client_id": "c4", "description": "Medialuna 60 gr x5761, Croissant x1913, Tortita raspada x1798, Shoku Pan x682, Medialuna x126, Envio x29", "total_amount": 1629725, "status": "terminado", "payment_condition": "cuenta_corriente", "due_date": "2026-05-30", "created_at": "2025-02-14", "completed_at": "2026-05-15"},
-                {"id": "w5", "client_id": "c5", "description": "Medialuna 60 gr x2689, Croissant x86, Envio x15", "total_amount": 1353250, "status": "terminado", "payment_condition": "cuenta_corriente", "due_date": "2026-05-30", "created_at": "2025-02-14", "completed_at": "2026-05-15"},
-                {"id": "w6", "client_id": "c6", "description": "Pan Ciabatta x878, Pizza masa madre 4 porc x80, Focaccia Placa Grande 3kg x24, Pan integral de molde x11, Envio x6, Pan semi-integral x4", "total_amount": 1145500, "status": "terminado", "payment_condition": "cuenta_corriente", "due_date": "2026-05-30", "created_at": "2025-02-14", "completed_at": "2026-05-15"},
-                {"id": "w7", "client_id": "c7", "description": "Medialuna 60 gr x2104, Pan Ciabatta x200, Croissant x185, New York Rolls relleno Chocolate x10, New York Rolls Sin Relleno x6, Envio x3", "total_amount": 677500, "status": "cobrado", "payment_condition": "cuenta_corriente", "due_date": "2026-05-30", "created_at": "2025-02-14", "completed_at": "2026-05-15"},
-                {"id": "w8", "client_id": "c8", "description": "Croissant x342, New York Rolls Sin Relleno x248, Palmerita x141, Tortita raspada x50, Pan integral molde Con Semillas x33, Croissant (Promo) x19", "total_amount": 569650, "status": "cobrado", "payment_condition": "cuenta_corriente", "due_date": "2026-05-30", "created_at": "2025-02-14", "completed_at": "2026-05-15"},
-                {"id": "w9", "client_id": "c9", "description": "Medialuna 60 gr x362, Pan Ciabatta x66, Pan de papa 80 gr x52, Pan de papa 60 gr x41, Pan integral de molde x38, Croissant x37", "total_amount": 547075, "status": "terminado", "payment_condition": "cuenta_corriente", "due_date": "2026-05-30", "created_at": "2025-02-14", "completed_at": "2026-05-15"},
-                {"id": "w10", "client_id": "c10", "description": "Medialuna 60 gr x330, Croissant x66, Pan Ciabatta x36, Tortita raspada x2, Palmerita x2, Pizza masa madre 4 porc x1", "total_amount": 318600, "status": "cobrado", "payment_condition": "cuenta_corriente", "due_date": "2026-05-30", "created_at": "2025-02-14", "completed_at": "2026-05-15"},
-                {"id": "w11", "client_id": "c11", "description": "Medialuna 60 gr x544, Croissant x341, Tortita raspada x293, Pan de papa 80 gr x127, Pan Ciabatta x122, Croissant Relleno Diplomata x119", "total_amount": 248100, "status": "terminado", "payment_condition": "cuenta_corriente", "due_date": "2026-05-30", "created_at": "2025-02-14", "completed_at": "2026-05-15"},
-                {"id": "w12", "client_id": "c12", "description": "Croissant x907, Medialuna 60 gr x742, Tortita raspada x334, New York Rolls Sin Relleno x84, New York rolls x14, New York Rolls relleno x6", "total_amount": 232850, "status": "terminado", "payment_condition": "cuenta_corriente", "due_date": "2026-05-30", "created_at": "2025-02-14", "completed_at": "2026-05-15"},
-                {"id": "w13", "client_id": "c13", "description": "Medialuna 60 gr x144, Pizza masa madre 4 porc x10, Chipa Monnoserie x6, Pan Ciabatta x5, Pan de campo 2kg x3, Envio x2", "total_amount": 181800, "status": "terminado", "payment_condition": "cuenta_corriente", "due_date": "2026-05-30", "created_at": "2025-02-14", "completed_at": "2026-05-15"},
-                {"id": "w14", "client_id": "c14", "description": "Pan Ciabatta x303, Focaccia Placa Grande 3kg x10", "total_amount": 117000, "status": "cobrado", "payment_condition": "cuenta_corriente", "due_date": "2026-05-30", "created_at": "2025-02-14", "completed_at": "2026-05-15"},
-                {"id": "w15", "client_id": "c15", "description": "Tortita raspada x276, Medialuna 60 gr x235, Croissant x117, Pan Ciabatta x108, Pizza masa madre 4 porc x31, Dannesa x28", "total_amount": 109150, "status": "terminado", "payment_condition": "cuenta_corriente", "due_date": "2026-05-30", "created_at": "2025-02-14", "completed_at": "2026-05-15"},
-                {"id": "w16", "client_id": "c16", "description": "Medialuna 60 gr x223, Pan Figazza x120, Tortita raspada x98, Croissant x77, New York Rolls Sin Relleno x50, Pan Ciabatta x49", "total_amount": 108000, "status": "terminado", "payment_condition": "cuenta_corriente", "due_date": "2026-05-30", "created_at": "2025-02-14", "completed_at": "2026-05-15"},
-                {"id": "w17", "client_id": "c17", "description": "Medialuna 60 gr x398, Pan Ciabatta x125, Chipa Monnoserie \"\"100 GR\"\" (Promo) x29, Pan de campo 800 gr x25, Pan de campo 2kg x15, Pan de campo x10", "total_amount": 104800, "status": "cobrado", "payment_condition": "cuenta_corriente", "due_date": "2026-05-30", "created_at": "2025-02-14", "completed_at": "2026-05-15"},
-                {"id": "w18", "client_id": "c18", "description": "Dannesa x13, Chipa Monnoserie \"\"100 GR\"\" (Promo) x12, Relleno Diplomata 500 gr x1, Envio x1", "total_amount": 57400, "status": "terminado", "payment_condition": "cuenta_corriente", "due_date": "2026-05-30", "created_at": "2025-02-14", "completed_at": "2026-05-15"}
+                {"id": "w1", "client_id": "c1", "description": "Croissant x1827, Medialuna 60 gr x1547, Pan Ciabatta x685, Medialuna x305, Pan de campo 2kg x271, Pan de papa 80 gr x220", "total_amount": 2065575, "status": "entregado", "payment_condition": "cuenta_corriente", "due_date": "2026-05-30", "created_at": "2025-02-14", "completed_at": "2026-05-15"},
+                {"id": "w2", "client_id": "c2", "description": "Medialuna 60 gr x5560, Croissant x2008, Pan Ciabatta x106, Envio x31, Shoku Pan x17, Tortita raspada x12", "total_amount": 1980000, "status": "entregado", "payment_condition": "cuenta_corriente", "due_date": "2026-05-30", "created_at": "2025-02-14", "completed_at": "2026-05-15"},
+                {"id": "w3", "client_id": "c3", "description": "Medialuna 60 gr x3959, Tortita raspada x1124, Tortita raspada (Promo) x307, Pan de campo 800 gr x175, New York Rolls Sin Relleno x149, Medialuna x60", "total_amount": 1960225, "status": "entregado", "payment_condition": "cuenta_corriente", "due_date": "2026-05-30", "created_at": "2025-02-14", "completed_at": "2026-05-15"},
+                {"id": "w4", "client_id": "c4", "description": "Medialuna 60 gr x5761, Croissant x1913, Tortita raspada x1798, Shoku Pan x682, Medialuna x126, Envio x29", "total_amount": 1629725, "status": "entregado", "payment_condition": "cuenta_corriente", "due_date": "2026-05-30", "created_at": "2025-02-14", "completed_at": "2026-05-15"},
+                {"id": "w5", "client_id": "c5", "description": "Medialuna 60 gr x2689, Croissant x86, Envio x15", "total_amount": 1353250, "status": "entregado", "payment_condition": "cuenta_corriente", "due_date": "2026-05-30", "created_at": "2025-02-14", "completed_at": "2026-05-15"},
+                {"id": "w6", "client_id": "c6", "description": "Pan Ciabatta x878, Pizza masa madre 4 porc x80, Focaccia Placa Grande 3kg x24, Pan integral de molde x11, Envio x6, Pan semi-integral x4", "total_amount": 1145500, "status": "entregado", "payment_condition": "cuenta_corriente", "due_date": "2026-05-30", "created_at": "2025-02-14", "completed_at": "2026-05-15"},
+                {"id": "w7", "client_id": "c7", "description": "Medialuna 60 gr x2104, Pan Ciabatta x200, Croissant x185, New York Rolls relleno Chocolate x10, New York Rolls Sin Relleno x6, Envio x3", "total_amount": 677500, "status": "entregado", "payment_condition": "cuenta_corriente", "due_date": "2026-05-30", "created_at": "2025-02-14", "completed_at": "2026-05-15"},
+                {"id": "w8", "client_id": "c8", "description": "Croissant x342, New York Rolls Sin Relleno x248, Palmerita x141, Tortita raspada x50, Pan integral molde Con Semillas x33, Croissant (Promo) x19", "total_amount": 569650, "status": "entregado", "payment_condition": "cuenta_corriente", "due_date": "2026-05-30", "created_at": "2025-02-14", "completed_at": "2026-05-15"},
+                {"id": "w9", "client_id": "c9", "description": "Medialuna 60 gr x362, Pan Ciabatta x66, Pan de papa 80 gr x52, Pan de papa 60 gr x41, Pan integral de molde x38, Croissant x37", "total_amount": 547075, "status": "entregado", "payment_condition": "cuenta_corriente", "due_date": "2026-05-30", "created_at": "2025-02-14", "completed_at": "2026-05-15"},
+                {"id": "w10", "client_id": "c10", "description": "Medialuna 60 gr x330, Croissant x66, Pan Ciabatta x36, Tortita raspada x2, Palmerita x2, Pizza masa madre 4 porc x1", "total_amount": 318600, "status": "entregado", "payment_condition": "cuenta_corriente", "due_date": "2026-05-30", "created_at": "2025-02-14", "completed_at": "2026-05-15"},
+                {"id": "w11", "client_id": "c11", "description": "Medialuna 60 gr x544, Croissant x341, Tortita raspada x293, Pan de papa 80 gr x127, Pan Ciabatta x122, Croissant Relleno Diplomata x119", "total_amount": 248100, "status": "entregado", "payment_condition": "cuenta_corriente", "due_date": "2026-05-30", "created_at": "2025-02-14", "completed_at": "2026-05-15"},
+                {"id": "w12", "client_id": "c12", "description": "Croissant x907, Medialuna 60 gr x742, Tortita raspada x334, New York Rolls Sin Relleno x84, New York rolls x14, New York Rolls relleno x6", "total_amount": 232850, "status": "entregado", "payment_condition": "cuenta_corriente", "due_date": "2026-05-30", "created_at": "2025-02-14", "completed_at": "2026-05-15"},
+                {"id": "w13", "client_id": "c13", "description": "Medialuna 60 gr x144, Pizza masa madre 4 porc x10, Chipa Monnoserie x6, Pan Ciabatta x5, Pan de campo 2kg x3, Envio x2", "total_amount": 181800, "status": "entregado", "payment_condition": "cuenta_corriente", "due_date": "2026-05-30", "created_at": "2025-02-14", "completed_at": "2026-05-15"},
+                {"id": "w14", "client_id": "c14", "description": "Pan Ciabatta x303, Focaccia Placa Grande 3kg x10", "total_amount": 117000, "status": "entregado", "payment_condition": "cuenta_corriente", "due_date": "2026-05-30", "created_at": "2025-02-14", "completed_at": "2026-05-15"},
+                {"id": "w15", "client_id": "c15", "description": "Tortita raspada x276, Medialuna 60 gr x235, Croissant x117, Pan Ciabatta x108, Pizza masa madre 4 porc x31, Dannesa x28", "total_amount": 109150, "status": "entregado", "payment_condition": "cuenta_corriente", "due_date": "2026-05-30", "created_at": "2025-02-14", "completed_at": "2026-05-15"},
+                {"id": "w16", "client_id": "c16", "description": "Medialuna 60 gr x223, Pan Figazza x120, Tortita raspada x98, Croissant x77, New York Rolls Sin Relleno x50, Pan Ciabatta x49", "total_amount": 108000, "status": "entregado", "payment_condition": "cuenta_corriente", "due_date": "2026-05-30", "created_at": "2025-02-14", "completed_at": "2026-05-15"},
+                {"id": "w17", "client_id": "c17", "description": "Medialuna 60 gr x398, Pan Ciabatta x125, Chipa Monnoserie \"\"100 GR\"\" (Promo) x29, Pan de campo 800 gr x25, Pan de campo 2kg x15, Pan de campo x10", "total_amount": 104800, "status": "entregado", "payment_condition": "cuenta_corriente", "due_date": "2026-05-30", "created_at": "2025-02-14", "completed_at": "2026-05-15"},
+                {"id": "w18", "client_id": "c18", "description": "Dannesa x13, Chipa Monnoserie \"\"100 GR\"\" (Promo) x12, Relleno Diplomata 500 gr x1, Envio x1", "total_amount": 57400, "status": "entregado", "payment_condition": "cuenta_corriente", "due_date": "2026-05-30", "created_at": "2025-02-14", "completed_at": "2026-05-15"}
             ];
 
             payments = [
@@ -589,10 +592,43 @@ function aplicarProducto() {
         function getTotalPaidForWork(workId) { return getPaymentsForWork(workId).reduce((sum, p) => sum + p.amount, 0); }
         function getPendingForWork(work) { return Math.max(0, work.total_amount - getTotalPaidForWork(work.id)); }
 
-        function updateWorkStatus(work) {
-            const paid = getTotalPaidForWork(work.id);
-            if (paid >= work.total_amount) work.status = 'cobrado';
-            else if (paid > 0 && work.status === 'presupuestado') work.status = 'en_curso';
+        // Estado de PAGO derivado de los cobros reales (única fuente de verdad).
+        // 'Pagado' solo si está cubierto el total. Así ARCA/cobros quedan siempre consistentes.
+        function getEstadoPago(work) {
+            return getTotalPaidForWork(work.id) >= work.total_amount ? 'Pagado' : 'Pendiente';
+        }
+
+        // Estados de CUMPLIMIENTO del pedido (separados del pago):
+        // pendiente_pago → en_preparacion → listo → entregado
+        const WORK_STATES = ['pendiente_pago', 'en_preparacion', 'listo', 'entregado'];
+        const WORK_STATE_LABEL = {
+            pendiente_pago: 'PENDIENTE DE PAGO',
+            en_preparacion: 'EN PREPARACIÓN',
+            listo: 'LISTO',
+            entregado: 'ENTREGADO'
+        };
+        const WORK_STATE_BADGE = {
+            pendiente_pago: 'bg-zinc-100 text-zinc-600',
+            en_preparacion: 'bg-blue-100 text-blue-700',
+            listo: 'bg-amber-100 text-amber-700',
+            entregado: 'bg-emerald-100 text-emerald-700'
+        };
+
+        // El pago YA NO mueve el estado del pedido. El avance es manual (botón "Preparar").
+        function updateWorkStatus(work) { /* el flujo de cumplimiento se controla a mano */ }
+
+        // Normaliza pedidos guardados (datos viejos) al nuevo modelo de estados + campos.
+        function migrateWorks() {
+            const map = { presupuestado: 'pendiente_pago', en_curso: 'en_preparacion', terminado: 'entregado', cobrado: 'entregado' };
+            works.forEach(w => {
+                if (map[w.status]) w.status = map[w.status];
+                if (!WORK_STATES.includes(w.status)) w.status = 'pendiente_pago';
+                if (w.payment_method === undefined) w.payment_method = 'Transferencia';
+                if (w.delivery_date === undefined) w.delivery_date = w.due_date || '';
+                if (w.delivery_mode === undefined) w.delivery_mode = 'retira';
+                if (w.delivery_address === undefined) w.delivery_address = '';
+                if (w.internal_notes === undefined) w.internal_notes = '';
+            });
         }
 
         function calculateOverdueDays(work) {
@@ -727,9 +763,8 @@ function aplicarProducto() {
             container.innerHTML = '';
 
             let filteredWorks = [...works];
-            if (filter === 'en_curso') filteredWorks = filteredWorks.filter(w => w.status === 'en_curso');
-            else if (filter === 'terminado') filteredWorks = filteredWorks.filter(w => w.status === 'terminado' || w.status === 'cobrado');
-            else if (filter === 'deuda') filteredWorks = filteredWorks.filter(w => getPendingForWork(w) > 0);
+            if (filter === 'deuda') filteredWorks = filteredWorks.filter(w => getPendingForWork(w) > 0);
+            else if (WORK_STATES.includes(filter)) filteredWorks = filteredWorks.filter(w => w.status === filter);
 
             filteredWorks.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
@@ -747,10 +782,10 @@ function aplicarProducto() {
                 const progress = Math.round((paid / work.total_amount) * 100);
                 const overdue = calculateOverdueDays(work);
 
-                let statusHTML = work.status === 'cobrado' ? `<span class="status-badge bg-emerald-100 text-emerald-700">COBRADO</span>` :
-                                work.status === 'terminado' ? `<span class="status-badge bg-amber-100 text-amber-700">ENTREGADO</span>` :
-                                work.status === 'en_curso' ? `<span class="status-badge bg-blue-100 text-blue-700">EN PREPARACIÓN</span>` :
-                                `<span class="status-badge bg-zinc-100 text-zinc-600">PENDIENTE</span>`;
+                let statusHTML = `<span class="status-badge ${WORK_STATE_BADGE[work.status] || 'bg-zinc-100 text-zinc-600'}">${WORK_STATE_LABEL[work.status] || work.status.toUpperCase()}</span>`;
+                const pagoHTML = getEstadoPago(work) === 'Pagado'
+                    ? `<span class="status-badge bg-emerald-100 text-emerald-700">PAGADO</span>`
+                    : `<span class="status-badge bg-rose-100 text-rose-700">PAGO PENDIENTE</span>`;
 
                 const card = document.createElement('div');
                 card.className = `work-card bg-white border border-zinc-200 rounded-3xl p-4 cursor-pointer`;
@@ -766,7 +801,7 @@ function aplicarProducto() {
                         </div>
                     </div>
                     <div class="flex items-center justify-between text-xs">
-                        <div>${statusHTML} ${overdue > 0 ? `<span class="ml-1 text-red-600 font-medium">+${overdue}d</span>` : ''}</div>
+                        <div class="flex flex-wrap gap-1 items-center">${statusHTML} ${pagoHTML} ${overdue > 0 ? `<span class="ml-1 text-red-600 font-medium">+${overdue}d</span>` : ''}</div>
                         <button onclick="event.stopImmediatePropagation(); showWorkDetail('${work.id}')" class="px-3 py-1 text-xs bg-zinc-100 hover:bg-zinc-200 rounded-2xl">Detalle</button>
                     </div>
                 `;
@@ -826,7 +861,7 @@ function aplicarProducto() {
             const missing = works.filter(w => {
                 const paid = getTotalPaidForWork(w.id);
                 const hasInvoice = invoices.some(i => i.work_id === w.id);
-                return (w.status === 'cobrado' || paid >= w.total_amount * 0.9) && !hasInvoice;
+                return (getEstadoPago(w) === 'Pagado' || paid >= w.total_amount * 0.9) && !hasInvoice;
             });
 
             if (missing.length > 0) {
@@ -865,7 +900,7 @@ function aplicarProducto() {
             let actions = [];
 
             works.forEach(work => {
-                if (work.status === 'terminado' && getPendingForWork(work) > 0 && work.completed_at) {
+                if (work.status === 'entregado' && getPendingForWork(work) > 0 && work.completed_at) {
                     const daysSince = Math.floor((today - new Date(work.completed_at)) / (1000 * 60 * 60 * 24));
                     if (daysSince >= 7) {
                         const client = getClientById(work.client_id);
@@ -882,7 +917,7 @@ function aplicarProducto() {
             });
 
             works.forEach(work => {
-                if (work.status === 'cobrado' && work.completed_at) {
+                if (work.status === 'entregado' && getEstadoPago(work) === 'Pagado' && work.completed_at) {
                     const daysSince = Math.floor((today - new Date(work.completed_at)) / (1000 * 60 * 60 * 24));
                     if (daysSince >= 30) {
                         const client = getClientById(work.client_id);
@@ -1105,7 +1140,29 @@ function aplicarProducto() {
                             </div>
                         </div>
 
-                        <div><label class="block text-xs font-medium text-zinc-500 mb-1.5">FECHA DE VENCIMIENTO</label><input id="work-due" type="date" value="${getToday()}" class="w-full border border-zinc-200 focus:border-emerald-500 rounded-2xl px-4 py-3 text-sm"></div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div><label class="block text-xs font-medium text-zinc-500 mb-1.5">MÉTODO DE PAGO</label>
+                                <select id="work-method" class="w-full border border-zinc-200 focus:border-emerald-500 rounded-2xl px-4 py-3 text-sm">
+                                    <option value="Transferencia">Transferencia</option><option value="Efectivo">Efectivo</option><option value="Mercado Pago">Mercado Pago</option>
+                                </select>
+                            </div>
+                            <div><label class="block text-xs font-medium text-zinc-500 mb-1.5">ESTADO DEL PAGO</label>
+                                <select id="work-paystate" class="w-full border border-zinc-200 focus:border-emerald-500 rounded-2xl px-4 py-3 text-sm">
+                                    <option value="Pendiente">Pendiente</option><option value="Pagado">Pagado</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div><label class="block text-xs font-medium text-zinc-500 mb-1.5">FECHA DE ENTREGA *</label><input id="work-delivery-date" type="date" value="${getToday()}" required class="w-full border border-zinc-200 focus:border-emerald-500 rounded-2xl px-4 py-3 text-sm"></div>
+
+                        <div><label class="block text-xs font-medium text-zinc-500 mb-1.5">MODALIDAD</label>
+                            <select id="work-mode" onchange="document.getElementById('work-address-wrap').classList.toggle('hidden', this.value !== 'delivery')" class="w-full border border-zinc-200 focus:border-emerald-500 rounded-2xl px-4 py-3 text-sm">
+                                <option value="retira">Retira en local</option><option value="delivery">Delivery</option>
+                            </select>
+                        </div>
+                        <div id="work-address-wrap" class="hidden"><label class="block text-xs font-medium text-zinc-500 mb-1.5">DIRECCIÓN DE ENTREGA</label><input id="work-address" type="text" class="w-full border border-zinc-200 focus:border-emerald-500 rounded-2xl px-4 py-3 text-sm" placeholder="Calle, número, barrio..."></div>
+
+                        <div><label class="block text-xs font-medium text-zinc-500 mb-1.5">NOTAS INTERNAS</label><textarea id="work-notes" class="w-full border border-zinc-200 focus:border-emerald-500 rounded-3xl px-4 py-3 text-sm h-16" placeholder="Notas para el equipo (no se envían al cliente)"></textarea></div>
                     </div>
 
                     <div class="flex gap-3 mt-8">
@@ -1121,28 +1178,49 @@ function aplicarProducto() {
             const clientId = document.getElementById('work-client').value;
             const description = document.getElementById('work-desc').value.trim();
             const amount = parseFloat(document.getElementById('work-amount').value);
+            const deliveryDate = document.getElementById('work-delivery-date').value;
+            const method = document.getElementById('work-method').value;
+            const payState = document.getElementById('work-paystate').value;
+            const mode = document.getElementById('work-mode').value;
+            const address = (document.getElementById('work-address')?.value || '').trim();
 
             if (!description || !amount) { alert("Completá descripción y monto"); return; }
+            if (!deliveryDate) { alert("La fecha de entrega es obligatoria"); return; }
+            if (mode === 'delivery' && !address) { alert("Ingresá la dirección de entrega"); return; }
 
+            const wid = 'w' + Date.now();
             const nuevoPedido = {
-                id: 'w' + Date.now(),
+                id: wid,
                 client_id: clientId,
                 description,
                 total_amount: amount,
-                status: "presupuestado",
+                status: "pendiente_pago",
                 payment_condition: document.getElementById('work-condition').value,
-                due_date: document.getElementById('work-due').value,
+                payment_method: method,
+                delivery_date: deliveryDate,
+                delivery_mode: mode,
+                delivery_address: mode === 'delivery' ? address : '',
+                internal_notes: (document.getElementById('work-notes')?.value || '').trim(),
+                due_date: deliveryDate,
                 created_at: getToday(),
                 completed_at: null
             };
             works.unshift(nuevoPedido);
+            GBDB.create('obras', nuevoPedido);
+
+            // Si el pedido se crea ya PAGADO, registramos el cobro completo (mantiene la caja consistente).
+            if (payState === 'Pagado') {
+                const cobro = { id: 'p' + Date.now(), work_id: wid, amount: amount, date: getToday(), method: method, notes: 'Pago al crear el pedido' };
+                payments.push(cobro);
+                GBDB.create('cobros', cobro);
+            }
 
             saveToLocalStorage();
-            GBDB.create('obras', nuevoPedido);
             hideModal();
             renderWorksList(currentFilter);
             updateKPIs();
             renderPendingList();
+            renderRecentPayments();
             showToast("Pedido registrado");
         }
 
@@ -1165,8 +1243,9 @@ function aplicarProducto() {
 
                     <div class="flex items-center justify-between mb-6">
                         <div><div class="text-xs text-zinc-500">MONTO TOTAL</div><div class="text-3xl font-semibold tracking-tighter">${formatCurrency(work.total_amount)}</div></div>
-                        <div class="text-right">
-                            <span class="status-badge ${work.status === 'cobrado' ? 'bg-emerald-100 text-emerald-700' : work.status === 'terminado' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}">${({presupuestado:'PENDIENTE',en_curso:'EN PREPARACIÓN',terminado:'ENTREGADO',cobrado:'COBRADO'})[work.status]||work.status.toUpperCase()}</span>
+                        <div class="text-right space-x-1">
+                            <span class="status-badge ${WORK_STATE_BADGE[work.status] || 'bg-zinc-100 text-zinc-600'}">${WORK_STATE_LABEL[work.status] || work.status.toUpperCase()}</span>
+                            <span class="status-badge ${getEstadoPago(work) === 'Pagado' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}">${getEstadoPago(work) === 'Pagado' ? 'PAGADO' : 'PAGO PENDIENTE'}</span>
                         </div>
                     </div>
 
@@ -1175,10 +1254,20 @@ function aplicarProducto() {
                         <div class="h-3 bg-zinc-100 rounded-full overflow-hidden"><div class="h-3 bg-emerald-500" style="width: ${Math.min(100, Math.round(paid / work.total_amount * 100))}%"></div></div>
                     </div>
 
-                    <div class="mb-6 flex gap-2">
-                        ${work.status === 'presupuestado' ? `<button onclick="advanceWorkStatus('${workId}', 'en_curso'); hideModal()" class="flex-1 py-2 text-xs bg-blue-600 text-white rounded-2xl font-medium">Preparar pedido</button>` : ''}
-                        ${work.status === 'en_curso' ? `<button onclick="advanceWorkStatus('${workId}', 'terminado'); hideModal()" class="flex-1 py-2 text-xs bg-amber-600 text-white rounded-2xl font-medium">Marcar terminado</button>` : ''}
-                        ${pending === 0 && work.status !== 'cobrado' ? `<button onclick="advanceWorkStatus('${workId}', 'cobrado'); hideModal()" class="flex-1 py-2 text-xs bg-emerald-600 text-white rounded-2xl font-medium">Marcar cobrado</button>` : ''}
+                    <div class="mb-5 bg-zinc-50 border border-zinc-100 rounded-3xl p-4 text-sm space-y-1.5">
+                        <div class="flex justify-between"><span class="text-zinc-500">Entrega</span><span class="font-medium">${work.delivery_date ? formatDate(work.delivery_date) : '—'}</span></div>
+                        <div class="flex justify-between"><span class="text-zinc-500">Modalidad</span><span class="font-medium">${work.delivery_mode === 'delivery' ? 'Delivery' : 'Retira en local'}</span></div>
+                        ${work.delivery_mode === 'delivery' && work.delivery_address ? `<div class="flex justify-between gap-2"><span class="text-zinc-500">Dirección</span><span class="font-medium text-right">${work.delivery_address}</span></div>` : ''}
+                        <div class="flex justify-between"><span class="text-zinc-500">Método de pago</span><span class="font-medium">${work.payment_method || '—'}</span></div>
+                        ${work.internal_notes ? `<div class="pt-1 text-xs text-zinc-500">📝 ${work.internal_notes}</div>` : ''}
+                    </div>
+
+                    <div class="mb-6 flex flex-col gap-2">
+                        ${work.status === 'pendiente_pago' && getEstadoPago(work) !== 'Pagado' ? `<button onclick="showPaymentModal('${workId}'); hideModal()" class="w-full py-2.5 text-sm bg-emerald-600 text-white rounded-2xl font-medium">Registrar pago</button>` : ''}
+                        ${work.status === 'pendiente_pago' && getEstadoPago(work) === 'Pagado' ? `<button onclick="advanceWorkStatus('${workId}', 'en_preparacion'); hideModal()" class="w-full py-2.5 text-sm bg-blue-600 text-white rounded-2xl font-medium">Preparar pedido</button>` : ''}
+                        ${work.status === 'en_preparacion' ? `<button onclick="advanceWorkStatus('${workId}', 'listo'); hideModal()" class="w-full py-2.5 text-sm bg-amber-600 text-white rounded-2xl font-medium">Marcar listo</button>` : ''}
+                        ${work.status === 'listo' ? `<button onclick="advanceWorkStatus('${workId}', 'entregado'); hideModal()" class="w-full py-2.5 text-sm bg-emerald-600 text-white rounded-2xl font-medium">Marcar entregado</button>` : ''}
+                        ${pending > 0 ? `<button onclick="payWithMercadoPago('${workId}')" class="w-full py-2.5 text-sm bg-sky-500 text-white rounded-2xl font-medium">Cobrar con Mercado Pago</button>` : ''}
                     </div>
 
                     <div class="mb-6">
@@ -1211,8 +1300,7 @@ function aplicarProducto() {
         function advanceWorkStatus(workId, newStatus) {
             const work = getWorkById(workId);
             work.status = newStatus;
-            if (newStatus === 'terminado' && !work.completed_at) work.completed_at = getToday();
-            if (newStatus === 'cobrado') work.completed_at = work.completed_at || getToday();
+            if (newStatus === 'entregado' && !work.completed_at) work.completed_at = getToday();
 
             saveToLocalStorage();
             GBDB.update('obras', { id: work.id, status: work.status, completed_at: work.completed_at || '' });
@@ -1221,7 +1309,8 @@ function aplicarProducto() {
             renderWorksList(currentFilter);
             updateKPIs();
             renderAgenda();
-            showToast(newStatus === 'cobrado' ? "¡Pedido marcado como cobrado!" : "Estado actualizado");
+            const msg = { en_preparacion: '👨‍🍳 Pedido en preparación', listo: '✅ Pedido listo', entregado: '🚚 ¡Pedido entregado!' }[newStatus] || 'Estado actualizado';
+            showToast(msg);
         }
 
         function showPaymentModal(workId) {
@@ -1248,7 +1337,7 @@ function aplicarProducto() {
                             <div><label class="block text-xs font-medium text-zinc-500 mb-1">FECHA</label><input id="payment-date" type="date" value="${getToday()}" class="w-full border border-zinc-200 focus:border-emerald-500 rounded-2xl px-4 py-3 text-sm"></div>
                             <div><label class="block text-xs font-medium text-zinc-500 mb-1">MÉTODO</label>
                                 <select id="payment-method" class="w-full border border-zinc-200 focus:border-emerald-500 rounded-2xl px-4 py-3 text-sm">
-                                    <option>Efectivo</option><option>Transferencia bancaria</option><option>Tarjeta de débito/crédito</option><option>Otro</option>
+                                    ${['Transferencia','Efectivo','Mercado Pago','Tarjeta de débito/crédito','Otro'].map(m => `<option ${ (work.payment_method || '') === m ? 'selected' : '' }>${m}</option>`).join('')}
                                 </select>
                             </div>
                         </div>
@@ -1753,6 +1842,39 @@ function aplicarProducto() {
             }, 700);
         }
 
+        async function payWithMercadoPago(workId) {
+            const work = getWorkById(workId);
+            if (!work) return;
+            const client = getClientById(work.client_id);
+            const monto = getPendingForWork(work);
+            if (monto <= 0) { showToast('Este pedido ya está pagado'); return; }
+            const email = (client && client.notes && client.notes.includes('@')) ? client.notes.trim() : '';
+            showToast('Generando link de pago…');
+            try {
+                const resp = await fetch('/.netlify/functions/mp-crear-pago', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        pedidoId: work.id,
+                        descripcion: `${config.company_name} — ${work.description}`.slice(0, 250),
+                        monto: monto,
+                        clienteNombre: client ? client.name : '',
+                        clienteEmail: email
+                    })
+                });
+                const data = await resp.json();
+                if (data && data.success && data.initPoint) {
+                    window.open(data.initPoint, '_blank');
+                    hideModal();
+                    showToast('Link de Mercado Pago abierto');
+                } else {
+                    alert('No se pudo generar el pago' + (data && data.error ? `: ${data.error}` : ''));
+                }
+            } catch (e) {
+                alert('Error conectando con Mercado Pago: ' + e.message);
+            }
+        }
+
         function showClientDetail(clientId) {
             const client = getClientById(clientId);
             const clientWorks = works.filter(w => w.client_id === clientId);
@@ -2181,7 +2303,7 @@ function aplicarProducto() {
         }
         function normWork(r) {
             return { id: r.id, client_id: r.client_id || '', description: r.description || '',
-                     total_amount: num(r.total_amount), status: r.status || 'presupuestado',
+                     total_amount: num(r.total_amount), status: r.status || 'pendiente_pago',
                      payment_condition: r.payment_condition || 'contado', due_date: r.due_date || '',
                      completed_at: r.completed_at || null, created_at: r.created_at || getToday() };
         }
