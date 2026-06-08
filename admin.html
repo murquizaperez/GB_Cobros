@@ -227,8 +227,10 @@ h1,h2,h3,.fred{font-family:'Fredoka',sans-serif}
       <div class="seccion" id="sec-caja"><div id="caja-body"></div></div>
       <div class="seccion" id="sec-ingredientes"><div id="ing-body"></div></div>
       <div class="seccion" id="sec-produccion"><div id="prodc-body"></div></div>
-      <div class="seccion" id="sec-reportes"><div class="proximamente"><div class="big">📈</div><p>Reportes de ventas, márgenes y producción.</p><div class="fase">Fase 4</div></div></div>
+      <div class="seccion" id="sec-reportes"><div id="rep-body"></div></div>
     </div>
+  </div>
+</div>
   </div>
 </div>
 
@@ -276,6 +278,7 @@ const App = {
     if(sec==='caja')this.cargarCaja();
     if(sec==='ingredientes')this.cargarIngredientes();
     if(sec==='produccion')this.cargarProduccion();
+    if(sec==='reportes')this.cargarReportes();
   },
   toggleMenu(){document.getElementById('sidebar').classList.toggle('abierto');},
 
@@ -837,6 +840,87 @@ const App = {
         d.lotes.map(l=>`<tr><td style="font-size:.8rem;color:#888">${l.fecha?new Date(l.fecha).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):''}</td><td><b>${l.producto}</b></td><td>+${l.cantidad}</td><td>${this.money(l.costo)}</td><td>${l.responsable||'—'}</td></tr>`).join('')+
         '</tbody></table></div>';
     }catch(e){}
+  },
+
+  
+  // ---------- REPORTES ----------
+  repDias:30,
+  async cargarReportes(){
+    const el=document.getElementById('rep-body');
+    el.innerHTML='<div class="spin">Calculando…</div>';
+    try{
+      const r=await fetch(API+'/reportes?dias='+this.repDias+'&token='+encodeURIComponent(this.token),{headers:this.headers()});
+      if(r.status===401){this.salir('Clave incorrecta');return;}
+      const d=await r.json();
+      if(!d.success)throw new Error(d.error||'Error');
+      this.renderReportes(d);
+    }catch(e){el.innerHTML='<div class="vacio">Error: '+e.message+'</div>';}
+  },
+  setRepDias(n){this.repDias=n;this.cargarReportes();},
+  graficoBarras(serie){
+    if(!serie.length)return '<div style="color:#aaa;text-align:center;padding:1rem">Sin datos</div>';
+    const max=Math.max(1,...serie.map(s=>s.total));
+    const W=Math.max(serie.length*16,300), H=160, pad=20;
+    const bw=(W-pad*2)/serie.length;
+    const barras=serie.map((s,i)=>{
+      const h=(s.total/max)*(H-pad*2);
+      const x=pad+i*bw, y=H-pad-h;
+      const fecha=s.fecha.slice(8,10)+'/'+s.fecha.slice(5,7);
+      return `<rect x="${x+1}" y="${y}" width="${Math.max(bw-2,1)}" height="${h}" rx="2" fill="var(--violeta-vivo)"><title>${fecha}: ${this.money(s.total)}</title></rect>`;
+    }).join('');
+    // etiquetas cada ~7 barras
+    const labels=serie.map((s,i)=>{
+      if(i%Math.ceil(serie.length/8)!==0)return '';
+      const x=pad+i*bw+bw/2;
+      return `<text x="${x}" y="${H-4}" font-size="9" fill="#aaa" text-anchor="middle">${s.fecha.slice(8,10)}/${s.fecha.slice(5,7)}</text>`;
+    }).join('');
+    return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:170px" preserveAspectRatio="none">${barras}${labels}</svg>`;
+  },
+  renderReportes(d){
+    const pc=d.porCanal||{};
+    const top=(d.topProductos||[]).map((p,i)=>`<tr><td style="color:#bbb;width:24px">${i+1}</td><td><b>${p.nombre}</b></td><td style="text-align:right">${p.cantidad} u</td><td style="text-align:right;color:var(--ok);font-weight:600">${this.money(p.total)}</td></tr>`).join('')||'<tr><td colspan="4" style="text-align:center;color:#aaa">Sin ventas en el período</td></tr>';
+    const marg=(d.margenes||[]).map(m=>{
+      const col=m.margenPct>=50?'var(--ok)':(m.margenPct>=25?'var(--warn)':'var(--err)');
+      return `<tr><td><b>${m.nombre}</b></td><td style="text-align:right">${this.money(m.precio)}</td><td style="text-align:right;color:#999">${this.money(m.costo)}</td><td style="text-align:right;font-weight:600">${this.money(m.margen)}</td><td style="text-align:right;font-weight:600;color:${col}">${m.margenPct}%</td></tr>`;
+    }).join('')||'<tr><td colspan="5" style="text-align:center;color:#aaa">Cargá costos en los productos para ver márgenes</td></tr>';
+    const inv=d.valorInventario||{};
+    document.getElementById('rep-body').innerHTML=`
+      <div class="bar">
+        <button class="filtro ${this.repDias===7?'activo':''}" onclick="App.setRepDias(7)">7 días</button>
+        <button class="filtro ${this.repDias===30?'activo':''}" onclick="App.setRepDias(30)">30 días</button>
+        <button class="filtro ${this.repDias===90?'activo':''}" onclick="App.setRepDias(90)">90 días</button>
+      </div>
+      <div class="kpis">
+        <div class="kpi verde"><div class="lbl">Ventas del período</div><div class="val">${this.money(d.totalPeriodo)}</div><div class="sub">${d.dias} días</div></div>
+        <div class="kpi"><div class="lbl">Portal online</div><div class="val" style="font-size:1.3rem">${this.money(pc.minorista||0)}</div></div>
+        <div class="kpi"><div class="lbl">Local (POS)</div><div class="val" style="font-size:1.3rem">${this.money(pc.pos||0)}</div></div>
+        <div class="kpi"><div class="lbl">Mayorista</div><div class="val" style="font-size:1.3rem">${this.money(pc.mayorista||0)}</div></div>
+      </div>
+      <div class="panel">
+        <h2>Ventas por día</h2>
+        ${this.graficoBarras(d.ventasPorDia||[])}
+      </div>
+      <div class="dos-col">
+        <div class="panel">
+          <h2>🏆 Más vendidos</h2>
+          <table class="tabla"><tbody>${top}</tbody></table>
+        </div>
+        <div class="panel">
+          <h2>💰 Márgenes por producto</h2>
+          <div style="overflow-x:auto"><table class="tabla">
+            <thead><tr><th>Producto</th><th style="text-align:right">Precio</th><th style="text-align:right">Costo</th><th style="text-align:right">Margen</th><th style="text-align:right">%</th></tr></thead>
+            <tbody>${marg}</tbody>
+          </table></div>
+        </div>
+      </div>
+      <div class="panel">
+        <h2>📦 Valor de inventario (al costo)</h2>
+        <table class="tabla">
+          <tr><td>Productos terminados</td><td style="text-align:right;font-weight:600">${this.money(inv.productos||0)}</td></tr>
+          <tr><td>Materia prima (ingredientes)</td><td style="text-align:right;font-weight:600">${this.money(inv.ingredientes||0)}</td></tr>
+          <tr><td style="font-weight:600;color:var(--violeta-osc)">Total inmovilizado</td><td style="text-align:right;font-weight:700;color:var(--violeta-vivo)">${this.money(inv.total||0)}</td></tr>
+        </table>
+      </div>`;
   },
 
     toast(msg,tipo){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show '+(tipo||'');setTimeout(()=>{t.className='toast';},2400);}
