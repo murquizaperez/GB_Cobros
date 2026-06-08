@@ -225,8 +225,8 @@ h1,h2,h3,.fred{font-family:'Fredoka',sans-serif}
         </div>
       </div>
       <div class="seccion" id="sec-caja"><div id="caja-body"></div></div>
-      <div class="seccion" id="sec-ingredientes"><div class="proximamente"><div class="big">🧪</div><p>Gestión de materia prima y stock de insumos.</p><div class="fase">Fase 3</div></div></div>
-      <div class="seccion" id="sec-produccion"><div class="proximamente"><div class="big">🏭</div><p>Registro de lotes y descuento automático de ingredientes.</p><div class="fase">Fase 3</div></div></div>
+      <div class="seccion" id="sec-ingredientes"><div id="ing-body"></div></div>
+      <div class="seccion" id="sec-produccion"><div id="prodc-body"></div></div>
       <div class="seccion" id="sec-reportes"><div class="proximamente"><div class="big">📈</div><p>Reportes de ventas, márgenes y producción.</p><div class="fase">Fase 4</div></div></div>
     </div>
   </div>
@@ -274,6 +274,8 @@ const App = {
     if(sec==='pedidos'){this.renderFiltros();this.cargarPedidos();}
     if(sec==='pos')this.cargarPOS();
     if(sec==='caja')this.cargarCaja();
+    if(sec==='ingredientes')this.cargarIngredientes();
+    if(sec==='produccion')this.cargarProduccion();
   },
   toggleMenu(){document.getElementById('sidebar').classList.toggle('abierto');},
 
@@ -643,6 +645,198 @@ const App = {
         this.cargarCaja();
       }else this.toast(d.error||'Error','err');
     }catch(e){this.toast(e.message,'err');}
+  },
+
+  
+  // ---------- INGREDIENTES ----------
+  ingredientes:[],
+  async cargarIngredientes(){
+    const el=document.getElementById('ing-body');
+    el.innerHTML='<div class="spin">Cargando…</div>';
+    try{
+      const r=await fetch(API+'/listar-ingredientes?token='+encodeURIComponent(this.token),{headers:this.headers()});
+      if(r.status===401){this.salir('Clave incorrecta');return;}
+      const d=await r.json();
+      if(!d.success)throw new Error(d.error||'Error');
+      this.ingredientes=d.ingredientes||[];
+      this.renderIngredientes();
+    }catch(e){el.innerHTML='<div class="vacio">Error: '+e.message+'</div>';}
+  },
+  renderIngredientes(){
+    const filas=this.ingredientes.map(i=>`
+      <tr>
+        <td><b>${i.nombre}</b></td>
+        <td>${i.unidad}</td>
+        <td><div class="stock-pill">
+          <button class="btn btn-sm btn-ghost" onclick="App.ajustarIng(${i.id},-1)">−</button>
+          <input class="stock-input" id="ing-${i.id}" value="${i.stock}" onchange="App.setIng(${i.id},this.value)">
+          <button class="btn btn-sm btn-ghost" onclick="App.ajustarIng(${i.id},1)">+</button>
+        </div></td>
+        <td style="text-align:center">${i.bajo?'<span class="badge" style="background:#fde8e6;color:#b13a34">BAJO</span>':'<span style="color:#bbb">'+i.stockMinimo+'</span>'}</td>
+        <td><input class="precio-input" id="ingc-${i.id}" value="${i.costo}" onchange="App.editarIng(${i.id})"></td>
+        <td><button class="btn btn-sm" style="background:#fde8e6;color:#b13a34" onclick="App.borrarIng(${i.id},'${i.nombre.replace(/'/g,"")}')">🗑</button></td>
+      </tr>`).join('');
+    document.getElementById('ing-body').innerHTML=`
+      <div class="panel">
+        <div style="display:flex;align-items:center;margin-bottom:.8rem">
+          <h2 style="margin:0">Ingredientes (${this.ingredientes.length})</h2>
+          <button class="btn btn-violeta" style="margin-left:auto" onclick="App.nuevoIngrediente()">+ Nuevo ingrediente</button>
+        </div>
+        <div style="overflow-x:auto">
+        <table class="tabla">
+          <thead><tr><th>Ingrediente</th><th>Unidad</th><th>Stock</th><th>Mínimo</th><th>Costo/u</th><th></th></tr></thead>
+          <tbody>${filas||'<tr><td colspan="6" style="text-align:center;color:#aaa;padding:1.5rem">Todavía no cargaste ingredientes</td></tr>'}</tbody>
+        </table></div>
+        <p style="font-size:.76rem;color:#aaa;margin-top:.8rem">El stock se descuenta solo al producir lotes. "BAJO" = stock por debajo del mínimo.</p>
+      </div>`;
+  },
+  async ajustarIng(id,delta){
+    try{const r=await fetch(API+'/gestionar-ingrediente',{method:'POST',headers:this.headers(),body:JSON.stringify({accion:'ajustar_stock',id,delta,token:this.token})});
+      const d=await r.json();if(d.success){document.getElementById('ing-'+id).value=d.stock;const x=this.ingredientes.find(y=>y.id===id);if(x)x.stock=d.stock;this.toast('Stock: '+d.stock,'ok');}else this.toast(d.error,'err');}catch(e){this.toast(e.message,'err');}
+  },
+  async setIng(id,val){
+    try{const r=await fetch(API+'/gestionar-ingrediente',{method:'POST',headers:this.headers(),body:JSON.stringify({accion:'set_stock',id,stock:Number(val)||0,token:this.token})});
+      const d=await r.json();if(d.success)this.toast('Actualizado','ok');else this.toast(d.error,'err');}catch(e){this.toast(e.message,'err');}
+  },
+  async editarIng(id){
+    const costo=Number(document.getElementById('ingc-'+id).value)||0;
+    try{const r=await fetch(API+'/gestionar-ingrediente',{method:'POST',headers:this.headers(),body:JSON.stringify({accion:'editar',id,costo,token:this.token})});
+      const d=await r.json();if(d.success)this.toast('Costo actualizado','ok');else this.toast(d.error,'err');}catch(e){this.toast(e.message,'err');}
+  },
+  async nuevoIngrediente(){
+    const nombre=prompt('Nombre del ingrediente:');if(!nombre)return;
+    const unidad=prompt('Unidad (g, kg, ml, l, unidad):','g')||'g';
+    const stock=prompt('Stock inicial:','0');
+    const costo=prompt('Costo por unidad:','0');
+    try{const r=await fetch(API+'/gestionar-ingrediente',{method:'POST',headers:this.headers(),body:JSON.stringify({accion:'crear',nombre,unidad,stock:Number(stock)||0,costo:Number(costo)||0,token:this.token})});
+      const d=await r.json();if(d.success){this.toast('Ingrediente creado','ok');this.cargarIngredientes();}else this.toast(d.error,'err');}catch(e){this.toast(e.message,'err');}
+  },
+  async borrarIng(id,nombre){
+    if(!confirm('¿Borrar "'+nombre+'"? Si está en alguna receta, se quita de ahí también.'))return;
+    try{const r=await fetch(API+'/gestionar-ingrediente',{method:'POST',headers:this.headers(),body:JSON.stringify({accion:'borrar',id,token:this.token})});
+      const d=await r.json();if(d.success){this.toast('Borrado','ok');this.cargarIngredientes();}else this.toast(d.error,'err');}catch(e){this.toast(e.message,'err');}
+  },
+
+  // ---------- PRODUCCIÓN + RECETAS ----------
+  prodProductos:[], prodIngredientes:[], recetaActual:[], prodSel:null,
+  async cargarProduccion(){
+    const el=document.getElementById('prodc-body');
+    el.innerHTML='<div class="spin">Cargando…</div>';
+    try{
+      const [rp,ri]=await Promise.all([
+        fetch(API+'/listar-productos?token='+encodeURIComponent(this.token),{headers:this.headers()}),
+        fetch(API+'/listar-ingredientes?token='+encodeURIComponent(this.token),{headers:this.headers()})
+      ]);
+      if(rp.status===401){this.salir('Clave incorrecta');return;}
+      this.prodProductos=((await rp.json()).productos||[]);
+      this.prodIngredientes=((await ri.json()).ingredientes||[]);
+      this.renderProduccion();
+      this.cargarLotes();
+    }catch(e){el.innerHTML='<div class="vacio">Error: '+e.message+'</div>';}
+  },
+  renderProduccion(){
+    const opts=this.prodProductos.map(p=>`<option value="${p.id}">${p.nombre}</option>`).join('');
+    document.getElementById('prodc-body').innerHTML=`
+      <div class="panel">
+        <h2>🏭 Producir un lote</h2>
+        <p style="font-size:.85rem;color:#888;margin-bottom:.6rem">Elegí qué producto vas a producir. Si tiene receta, se descuenta la materia prima sola.</p>
+        <select id="prodc-sel" onchange="App.verReceta(this.value)" style="width:100%;max-width:380px;padding:.5rem;border:1px solid #ddd;border-radius:8px;font-family:'Poppins';margin-bottom:1rem">
+          <option value="">— Elegí un producto —</option>${opts}
+        </select>
+        <div id="prodc-detalle"></div>
+      </div>
+      <div class="panel" id="panel-lotes"><h2>Historial de lotes</h2><div id="lotes-body"><div class="spin">…</div></div></div>`;
+  },
+  async verReceta(productoId){
+    this.prodSel=productoId?parseInt(productoId,10):null;
+    const cont=document.getElementById('prodc-detalle');
+    if(!this.prodSel){cont.innerHTML='';return;}
+    cont.innerHTML='<div class="spin">…</div>';
+    try{
+      const r=await fetch(API+'/receta?productoId='+this.prodSel+'&token='+encodeURIComponent(this.token),{headers:this.headers()});
+      const d=await r.json();
+      this.recetaActual=(d.items||[]).map(i=>({ingredienteId:i.ingredienteId,cantidad:i.cantidad}));
+      this.renderDetalleProd(d.items||[]);
+    }catch(e){cont.innerHTML='<div class="vacio">Error: '+e.message+'</div>';}
+  },
+  renderDetalleProd(items){
+    const ingOpts=this.prodIngredientes.map(i=>`<option value="${i.id}">${i.nombre} (${i.unidad})</option>`).join('');
+    const filasReceta=items.map((it,idx)=>`
+      <tr>
+        <td>${it.nombre} <span style="color:#aaa">(${it.unidad})</span></td>
+        <td><input class="stock-input" value="${it.cantidad}" onchange="App.recetaActual[${idx}].cantidad=Number(this.value)||0"></td>
+        <td style="color:#999;font-size:.8rem">stock: ${it.stock}</td>
+        <td><button class="btn btn-sm" style="background:#fde8e6;color:#b13a34" onclick="App.quitarItemReceta(${idx})">×</button></td>
+      </tr>`).join('');
+    document.getElementById('prodc-detalle').innerHTML=`
+      <div class="dos-col" style="margin-top:.5rem">
+        <div>
+          <h3 class="fred" style="color:var(--violeta-osc);margin-bottom:.5rem">Receta (por unidad)</h3>
+          <table class="tabla"><tbody id="receta-filas">${filasReceta||'<tr><td colspan="4" style="color:#aaa;text-align:center;padding:1rem">Sin receta. Agregá ingredientes o producí sin receta.</td></tr>'}</tbody></table>
+          <div style="display:flex;gap:.4rem;margin-top:.6rem;flex-wrap:wrap">
+            <select id="add-ing" style="flex:1;min-width:140px;padding:.4rem;border:1px solid #ddd;border-radius:8px">${ingOpts}</select>
+            <input id="add-ing-cant" class="stock-input" placeholder="cant" value="">
+            <button class="btn btn-sm btn-ghost" onclick="App.agregarItemReceta()">+ Agregar</button>
+          </div>
+          <button class="btn btn-violeta btn-sm" style="margin-top:.6rem" onclick="App.guardarReceta()">Guardar receta</button>
+        </div>
+        <div>
+          <h3 class="fred" style="color:var(--violeta-osc);margin-bottom:.5rem">Producir</h3>
+          <label style="font-size:.82rem;color:#666">¿Cuántas unidades producís?</label>
+          <input id="prodc-cant" type="number" value="1" style="width:100%;padding:.5rem;border:1px solid #ddd;border-radius:8px;font-family:'Fredoka';margin:.3rem 0 .6rem">
+          <label style="font-size:.82rem;color:#666">Responsable</label>
+          <input id="prodc-resp" style="width:100%;padding:.5rem;border:1px solid #ddd;border-radius:8px;margin:.3rem 0 .6rem">
+          <button class="btn btn-violeta" style="width:100%" onclick="App.producirLote(false)">🏭 Producir lote</button>
+          <p style="font-size:.75rem;color:#aaa;margin-top:.5rem">Suma stock del producto y descuenta los ingredientes de la receta.</p>
+        </div>
+      </div>`;
+  },
+  agregarItemReceta(){
+    const ingId=parseInt(document.getElementById('add-ing').value,10);
+    const cant=Number(document.getElementById('add-ing-cant').value)||0;
+    if(!ingId||cant<=0){this.toast('Elegí ingrediente y cantidad','err');return;}
+    if(this.recetaActual.find(x=>x.ingredienteId===ingId)){this.toast('Ya está en la receta','err');return;}
+    this.recetaActual.push({ingredienteId:ingId,cantidad:cant});
+    // re-render con nombres
+    const items=this.recetaActual.map(ra=>{const ing=this.prodIngredientes.find(i=>i.id===ra.ingredienteId)||{};return {ingredienteId:ra.ingredienteId,nombre:ing.nombre||'',unidad:ing.unidad||'',stock:ing.stock||0,cantidad:ra.cantidad};});
+    this.renderDetalleProd(items);
+  },
+  quitarItemReceta(idx){
+    this.recetaActual.splice(idx,1);
+    const items=this.recetaActual.map(ra=>{const ing=this.prodIngredientes.find(i=>i.id===ra.ingredienteId)||{};return {ingredienteId:ra.ingredienteId,nombre:ing.nombre||'',unidad:ing.unidad||'',stock:ing.stock||0,cantidad:ra.cantidad};});
+    this.renderDetalleProd(items);
+  },
+  async guardarReceta(){
+    if(!this.prodSel)return;
+    try{const r=await fetch(API+'/receta',{method:'POST',headers:this.headers(),body:JSON.stringify({accion:'set',productoId:this.prodSel,items:this.recetaActual,token:this.token})});
+      const d=await r.json();if(d.success)this.toast('Receta guardada ('+d.items+' ingredientes)','ok');else this.toast(d.error,'err');}catch(e){this.toast(e.message,'err');}
+  },
+  async producirLote(forzar){
+    if(!this.prodSel){this.toast('Elegí un producto','err');return;}
+    const cant=Number(document.getElementById('prodc-cant').value)||0;
+    if(cant<=0){this.toast('Cantidad inválida','err');return;}
+    const resp=document.getElementById('prodc-resp').value.trim();
+    try{
+      const r=await fetch(API+'/producir',{method:'POST',headers:this.headers(),body:JSON.stringify({productoId:this.prodSel,cantidad:cant,responsable:resp,forzar,token:this.token})});
+      const d=await r.json();
+      if(d.success){
+        this.toast('✓ Lote producido: +'+d.cantidad+' '+d.producto+(d.sinReceta?' (sin receta)':' · costo '+this.money(d.costoLote)),'ok');
+        this.cargarLotes();
+      }else if(d.faltantes){
+        const txt=d.faltantes.map(f=>'• '+f.nombre+': necesitás '+f.necesita+', hay '+f.disponible).join('\n');
+        if(confirm('No alcanza la materia prima:\n\n'+txt+'\n\n¿Producir igual? (el stock de ingredientes quedará en 0)'))this.producirLote(true);
+      }else this.toast(d.error||'Error','err');
+    }catch(e){this.toast(e.message,'err');}
+  },
+  async cargarLotes(){
+    try{const r=await fetch(API+'/producir?token='+encodeURIComponent(this.token),{headers:this.headers()});
+      const d=await r.json();
+      const el=document.getElementById('lotes-body');if(!el)return;
+      if(!d.lotes||!d.lotes.length){el.innerHTML='<div style="color:#aaa;text-align:center;padding:1rem">Sin lotes producidos aún</div>';return;}
+      el.innerHTML='<div style="overflow-x:auto"><table class="tabla"><thead><tr><th>Fecha</th><th>Producto</th><th>Cantidad</th><th>Costo</th><th>Responsable</th></tr></thead><tbody>'+
+        d.lotes.map(l=>`<tr><td style="font-size:.8rem;color:#888">${l.fecha?new Date(l.fecha).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):''}</td><td><b>${l.producto}</b></td><td>+${l.cantidad}</td><td>${this.money(l.costo)}</td><td>${l.responsable||'—'}</td></tr>`).join('')+
+        '</tbody></table></div>';
+    }catch(e){}
   },
 
     toast(msg,tipo){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show '+(tipo||'');setTimeout(()=>{t.className='toast';},2400);}
