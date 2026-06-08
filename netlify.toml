@@ -59,3 +59,23 @@
   from = "/api/gestionar-producto"
   to = "/.netlify/functions/gestionar-producto"
   status = 200
+
+[[redirects]]
+  from = "/api/caja-estado"
+  to = "/.netlify/functions/caja-estado"
+  status = 200
+
+[[redirects]]
+  from = "/api/caja-abrir"
+  to = "/.netlify/functions/caja-abrir"
+  status = 200
+
+[[redirects]]
+  from = "/api/caja-cerrar"
+  to = "/.netlify/functions/caja-cerrar"
+  status = 200
+
+[[redirects]]
+  from = "/api/crear-venta"
+  to = "/.netlify/functions/crear-venta"
+  status = 200
