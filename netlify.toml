@@ -99,3 +99,8 @@
   from = "/api/producir"
   to = "/.netlify/functions/producir"
   status = 200
+
+[[redirects]]
+  from = "/api/reportes"
+  to = "/.netlify/functions/reportes"
+  status = 200
