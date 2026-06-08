@@ -44,3 +44,18 @@
   from = "/api/cambiar-estado"
   to = "/.netlify/functions/cambiar-estado"
   status = 200
+
+[[redirects]]
+  from = "/api/dashboard"
+  to = "/.netlify/functions/dashboard"
+  status = 200
+
+[[redirects]]
+  from = "/api/listar-productos"
+  to = "/.netlify/functions/listar-productos"
+  status = 200
+
+[[redirects]]
+  from = "/api/gestionar-producto"
+  to = "/.netlify/functions/gestionar-producto"
+  status = 200
