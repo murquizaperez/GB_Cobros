@@ -4,3 +4,43 @@
 
 [functions]
   node_bundler = "esbuild"
+
+[[redirects]]
+  from = "/api/catalogo"
+  to = "/.netlify/functions/catalogo"
+  status = 200
+
+[[redirects]]
+  from = "/api/crear-pedido"
+  to = "/.netlify/functions/crear-pedido"
+  status = 200
+
+[[redirects]]
+  from = "/api/registrar-cliente"
+  to = "/.netlify/functions/registrar-cliente"
+  status = 200
+
+[[redirects]]
+  from = "/api/mis-pedidos"
+  to = "/.netlify/functions/mis-pedidos"
+  status = 200
+
+[[redirects]]
+  from = "/api/mp-crear-pago"
+  to = "/.netlify/functions/mp-crear-pago"
+  status = 200
+
+[[redirects]]
+  from = "/api/confirmar-pago"
+  to = "/.netlify/functions/confirmar-pago"
+  status = 200
+
+[[redirects]]
+  from = "/api/listar-pedidos"
+  to = "/.netlify/functions/listar-pedidos"
+  status = 200
+
+[[redirects]]
+  from = "/api/cambiar-estado"
+  to = "/.netlify/functions/cambiar-estado"
+  status = 200
