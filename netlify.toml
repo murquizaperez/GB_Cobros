@@ -79,3 +79,23 @@
   from = "/api/crear-venta"
   to = "/.netlify/functions/crear-venta"
   status = 200
+
+[[redirects]]
+  from = "/api/listar-ingredientes"
+  to = "/.netlify/functions/listar-ingredientes"
+  status = 200
+
+[[redirects]]
+  from = "/api/gestionar-ingrediente"
+  to = "/.netlify/functions/gestionar-ingrediente"
+  status = 200
+
+[[redirects]]
+  from = "/api/receta"
+  to = "/.netlify/functions/receta"
+  status = 200
+
+[[redirects]]
+  from = "/api/producir"
+  to = "/.netlify/functions/producir"
+  status = 200
