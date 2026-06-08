@@ -1,8 +1,11 @@
 {
-  "name": "gb-cobros-netlify",
-  "version": "1.0.0",
+  "name": "monnoshop",
+  "version": "1.2.0",
   "private": true,
+  "description": "Monnoshop - portal + cadena automática de pagos/facturación + notificaciones (Supabase + Netlify + ARCA)",
   "dependencies": {
-    "@arcasdk/core": "latest"
+    "@supabase/supabase-js": "^2.45.0",
+    "@arcasdk/core": "latest",
+    "nodemailer": "^6.9.0"
   }
 }
