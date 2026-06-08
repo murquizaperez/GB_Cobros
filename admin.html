@@ -119,6 +119,37 @@ h1,h2,h3,.fred{font-family:'Fredoka',sans-serif}
   .sidebar.abierto{left:0}
   .mobile-menu{display:inline-flex}
 }
+
+/* POS */
+.pos-layout{display:grid;grid-template-columns:1fr 340px;gap:1.2rem;align-items:start}
+@media(max-width:900px){.pos-layout{grid-template-columns:1fr}}
+.pos-buscar{width:100%;padding:.7rem 1rem;border:2px solid #e6e2d9;border-radius:12px;font-family:'Poppins';font-size:.95rem;margin-bottom:1rem}
+.pos-buscar:focus{outline:none;border-color:var(--violeta)}
+.pos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:.8rem}
+.pcard{background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 2px 10px rgba(63,62,122,.07);border:1px solid rgba(84,83,163,.1);display:flex;flex-direction:column}
+.pcard .img{height:90px;background:linear-gradient(135deg,#ede9ff,#f4f1ea);display:flex;align-items:center;justify-content:center;font-size:1.8rem;background-size:cover;background-position:center}
+.pcard .body{padding:.6rem .7rem;flex:1;display:flex;flex-direction:column}
+.pcard .nom{font-weight:600;font-size:.85rem;line-height:1.2;margin-bottom:.2rem}
+.pcard .stk{font-size:.7rem;color:#999;margin-bottom:.2rem}
+.pcard .prc{font-family:'Fredoka';font-weight:600;color:var(--ok);font-size:1.05rem;margin-bottom:.4rem}
+.pcard .btns{display:flex;gap:.25rem;margin-top:auto}
+.pcard .btns button{flex:1;border:1px solid var(--violeta);background:#fff;color:var(--violeta);border-radius:7px;padding:.3rem 0;font-family:'Fredoka';font-weight:600;font-size:.78rem;cursor:pointer}
+.pcard .btns button:hover{background:var(--violeta);color:#fff}
+.pos-venta{background:#fff;border-radius:14px;padding:1.1rem;box-shadow:0 2px 10px rgba(63,62,122,.07);border:1px solid rgba(84,83,163,.1);position:sticky;top:5rem}
+.pos-venta h2{font-size:1.05rem;color:var(--violeta-osc);margin-bottom:.7rem}
+.pos-venta input,.pos-venta select{width:100%;padding:.5rem .7rem;border:1px solid #ddd;border-radius:8px;font-family:'Poppins';font-size:.88rem;margin-bottom:.5rem}
+.pos-carrito{margin:.6rem 0;max-height:260px;overflow-y:auto}
+.pos-linea{display:flex;align-items:center;gap:.4rem;padding:.35rem 0;border-bottom:1px solid #f0ede7;font-size:.84rem}
+.pos-linea .x{cursor:pointer;color:var(--err);font-weight:700;padding:0 .3rem}
+.pos-linea .nm{flex:1}
+.pos-total{font-family:'Fredoka';font-weight:600;font-size:1.4rem;color:var(--violeta-vivo);text-align:right;margin:.6rem 0}
+.pos-cobrar{width:100%;background:var(--ok);color:#fff;border:none;border-radius:10px;padding:.8rem;font-family:'Fredoka';font-weight:600;font-size:1.05rem;cursor:pointer}
+.pos-cobrar:hover{filter:brightness(1.07)}
+.pos-cobrar:disabled{background:#ccc;cursor:not-allowed}
+.aviso{background:#fff3e0;color:#b26a00;padding:1rem 1.2rem;border-radius:12px;margin-bottom:1rem;font-size:.9rem;border-left:4px solid var(--warn)}
+.caja-form{max-width:420px}
+.caja-form label{display:block;font-size:.85rem;color:#666;margin:.6rem 0 .2rem}
+.caja-form input{width:100%;padding:.6rem;border:1px solid #ddd;border-radius:8px;font-family:'Fredoka'}
 </style>
 </head><body>
 
@@ -166,8 +197,34 @@ h1,h2,h3,.fred{font-family:'Fredoka',sans-serif}
       <div class="seccion activa" id="sec-dashboard"><div id="dash-body"></div></div>
       <div class="seccion" id="sec-productos"><div id="prod-body"></div></div>
       <div class="seccion" id="sec-pedidos"><div class="bar" id="ped-filtros"></div><div id="ped-body"></div></div>
-      <div class="seccion" id="sec-pos"><div class="proximamente"><div class="big">🛒</div><p>El Punto de Venta del local con carrito y cobro está en camino.</p><div class="fase">Fase 2</div></div></div>
-      <div class="seccion" id="sec-caja"><div class="proximamente"><div class="big">💵</div><p>Apertura, cierre y arqueo de caja por turno.</p><div class="fase">Fase 2</div></div></div>
+      <div class="seccion" id="sec-pos">
+        <div id="pos-aviso"></div>
+        <div class="pos-layout" id="pos-layout">
+          <div class="pos-productos">
+            <input class="pos-buscar" id="pos-buscar" placeholder="🔍 Buscar producto..." oninput="App.filtrarPOS(this.value)">
+            <div class="pos-grid" id="pos-grid"></div>
+          </div>
+          <div class="pos-venta">
+            <h2>🛒 Venta actual</h2>
+            <input id="pos-cliente" placeholder="Cliente (opcional)">
+            <select id="pos-medio">
+              <option value="Efectivo">Efectivo</option>
+              <option value="Transferencia">Transferencia</option>
+              <option value="Mercado Pago">Mercado Pago</option>
+              <option value="Tarjeta">Tarjeta</option>
+            </select>
+            <label style="display:flex;align-items:center;gap:.4rem;font-size:.85rem;margin-bottom:.5rem;cursor:pointer">
+              <input type="checkbox" id="pos-factura" style="width:auto;margin:0" onchange="document.getElementById('pos-cuit-wrap').style.display=this.checked?'block':'none'">
+              Emitir factura C
+            </label>
+            <div id="pos-cuit-wrap" style="display:none"><input id="pos-cuit" placeholder="CUIT/DNI (opcional)"></div>
+            <div class="pos-carrito" id="pos-carrito"></div>
+            <div class="pos-total">Total: <span id="pos-total">$0</span></div>
+            <button class="pos-cobrar" id="pos-cobrar" onclick="App.cobrar()">Cobrar</button>
+          </div>
+        </div>
+      </div>
+      <div class="seccion" id="sec-caja"><div id="caja-body"></div></div>
       <div class="seccion" id="sec-ingredientes"><div class="proximamente"><div class="big">🧪</div><p>Gestión de materia prima y stock de insumos.</p><div class="fase">Fase 3</div></div></div>
       <div class="seccion" id="sec-produccion"><div class="proximamente"><div class="big">🏭</div><p>Registro de lotes y descuento automático de ingredientes.</p><div class="fase">Fase 3</div></div></div>
       <div class="seccion" id="sec-reportes"><div class="proximamente"><div class="big">📈</div><p>Reportes de ventas, márgenes y producción.</p><div class="fase">Fase 4</div></div></div>
@@ -215,6 +272,8 @@ const App = {
     if(sec==='dashboard')this.cargarDashboard();
     if(sec==='productos')this.cargarProductos();
     if(sec==='pedidos'){this.renderFiltros();this.cargarPedidos();}
+    if(sec==='pos')this.cargarPOS();
+    if(sec==='caja')this.cargarCaja();
   },
   toggleMenu(){document.getElementById('sidebar').classList.toggle('abierto');},
 
@@ -430,7 +489,163 @@ const App = {
     }).join('');
   },
 
-  toast(msg,tipo){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show '+(tipo||'');setTimeout(()=>{t.className='toast';},2400);}
+
+  // ---------- PUNTO DE VENTA ----------
+  carritoPOS:[], prodPOS:[], cajaAbierta:false,
+  async cargarPOS(){
+    // Verificar caja
+    try{
+      const rc=await fetch(API+'/caja-estado?token='+encodeURIComponent(this.token),{headers:this.headers()});
+      const dc=await rc.json();
+      this.cajaAbierta=dc.success&&dc.abierta;
+    }catch(e){this.cajaAbierta=false;}
+    const aviso=document.getElementById('pos-aviso');
+    const layout=document.getElementById('pos-layout');
+    if(!this.cajaAbierta){
+      aviso.innerHTML='<div class="aviso">⚠️ No hay caja abierta. Andá a <b>Caja</b> y abrila para poder vender.</div>';
+      layout.style.opacity='.5';layout.style.pointerEvents='none';
+    }else{aviso.innerHTML='';layout.style.opacity='1';layout.style.pointerEvents='auto';}
+    // Cargar productos
+    try{
+      const r=await fetch(API+'/listar-productos?token='+encodeURIComponent(this.token),{headers:this.headers()});
+      if(r.status===401){this.salir('Clave incorrecta');return;}
+      const d=await r.json();
+      this.prodPOS=(d.productos||[]).filter(p=>p.activo&&p.precioMinorista>0);
+      this.renderGridPOS(this.prodPOS);
+    }catch(e){document.getElementById('pos-grid').innerHTML='<div class="vacio">Error al cargar productos</div>';}
+  },
+  filtrarPOS(q){
+    q=(q||'').toLowerCase().trim();
+    this.renderGridPOS(this.prodPOS.filter(p=>p.nombre.toLowerCase().includes(q)));
+  },
+  renderGridPOS(lista){
+    document.getElementById('pos-grid').innerHTML=lista.map(p=>{
+      const img=p.imagen?`style="background-image:url('${p.imagen}')"`:'';
+      const emoji=p.imagen?'':'🥐';
+      return `<div class="pcard">
+        <div class="img" ${img}>${emoji}</div>
+        <div class="body">
+          <div class="nom">${p.nombre}</div>
+          <div class="stk">Stock: ${p.stock}</div>
+          <div class="prc">${this.money(p.precioMinorista)}</div>
+          <div class="btns">
+            <button onclick="App.addPOS(${p.id},1)">+1</button>
+            <button onclick="App.addPOS(${p.id},6)">x6</button>
+            <button onclick="App.addPOS(${p.id},12)">x12</button>
+          </div>
+        </div>
+      </div>`;
+    }).join('')||'<div class="vacio">Sin productos</div>';
+  },
+  addPOS(id,cant){
+    const p=this.prodPOS.find(x=>x.id===id);if(!p)return;
+    const ex=this.carritoPOS.find(x=>x.id===id);
+    if(ex)ex.cantidad+=cant;else this.carritoPOS.push({id,nombre:p.nombre,precio:p.precioMinorista,cantidad:cant});
+    this.renderCarritoPOS();
+  },
+  quitarPOS(id){this.carritoPOS=this.carritoPOS.filter(x=>x.id!==id);this.renderCarritoPOS();},
+  renderCarritoPOS(){
+    const cont=document.getElementById('pos-carrito');
+    if(!this.carritoPOS.length){cont.innerHTML='<div style="color:#aaa;text-align:center;padding:1rem;font-size:.85rem">Carrito vacío</div>';document.getElementById('pos-total').textContent='$0';return;}
+    let total=0;
+    cont.innerHTML=this.carritoPOS.map(l=>{
+      const sub=l.precio*l.cantidad;total+=sub;
+      return `<div class="pos-linea"><span class="x" onclick="App.quitarPOS(${l.id})">×</span><span class="nm"><b>${l.cantidad}×</b> ${l.nombre}</span><span>${this.money(sub)}</span></div>`;
+    }).join('');
+    document.getElementById('pos-total').textContent=this.money(total);
+  },
+  async cobrar(){
+    if(!this.carritoPOS.length){this.toast('Carrito vacío','err');return;}
+    if(!this.cajaAbierta){this.toast('Abrí la caja primero','err');return;}
+    const btn=document.getElementById('pos-cobrar');btn.disabled=true;btn.textContent='Procesando…';
+    try{
+      const r=await fetch(API+'/crear-venta',{method:'POST',headers:this.headers(),body:JSON.stringify({
+        items:this.carritoPOS.map(l=>({productoId:l.id,cantidad:l.cantidad})),
+        medioPago:document.getElementById('pos-medio').value,
+        clienteNombre:document.getElementById('pos-cliente').value.trim(),
+        quiereFactura:document.getElementById('pos-factura').checked,
+        facturaCuit:document.getElementById('pos-cuit')?document.getElementById('pos-cuit').value.trim():'',
+        token:this.token
+      })});
+      const d=await r.json();
+      if(d.success){
+        this.toast('✓ Venta #'+d.ventaId+' · '+this.money(d.total)+(d.factura?' · Factura '+d.factura:''),'ok');
+        this.carritoPOS=[];this.renderCarritoPOS();
+        document.getElementById('pos-cliente').value='';document.getElementById('pos-factura').checked=false;
+        document.getElementById('pos-cuit-wrap').style.display='none';
+        this.cargarPOS();
+      }else this.toast(d.error||'Error','err');
+    }catch(e){this.toast(e.message,'err');}
+    btn.disabled=false;btn.textContent='Cobrar';
+  },
+
+  // ---------- CAJA ----------
+  async cargarCaja(){
+    const el=document.getElementById('caja-body');
+    el.innerHTML='<div class="spin">Cargando…</div>';
+    try{
+      const r=await fetch(API+'/caja-estado?token='+encodeURIComponent(this.token),{headers:this.headers()});
+      if(r.status===401){this.salir('Clave incorrecta');return;}
+      const d=await r.json();
+      if(!d.success)throw new Error(d.error||'Error');
+      if(!d.abierta){
+        el.innerHTML=`<div class="panel caja-form">
+          <h2>Abrir caja</h2>
+          <p style="font-size:.85rem;color:#888;margin-bottom:.5rem">Para empezar a vender, abrí la caja del turno.</p>
+          <label>Responsable del turno</label>
+          <input id="caja-resp" placeholder="Nombre">
+          <label>Monto de apertura (efectivo inicial)</label>
+          <input id="caja-monto" type="number" value="0">
+          <button class="btn btn-violeta" style="margin-top:1rem;width:100%" onclick="App.abrirCaja()">Abrir caja</button>
+        </div>`;
+        return;
+      }
+      const c=d.caja;
+      const movs=(d.movimientos||[]).length
+        ? d.movimientos.map(m=>`<tr><td>${({venta:'🛒 Venta',ingreso:'⬆️ Ingreso',egreso:'⬇️ Egreso'})[m.tipo]||m.tipo}</td><td style="color:#999;font-size:.8rem">${m.concepto||''}</td><td style="text-align:right;font-weight:600;color:${m.tipo==='egreso'?'var(--err)':'var(--ok)'}">${this.money(m.monto)}</td></tr>`).join('')
+        : '<tr><td colspan="3" style="text-align:center;color:#aaa">Sin movimientos aún</td></tr>';
+      el.innerHTML=`
+        <div class="kpis">
+          <div class="kpi"><div class="lbl">Apertura</div><div class="val">${this.money(c.apertura)}</div></div>
+          <div class="kpi"><div class="lbl">Turno a cargo</div><div class="val" style="font-size:1.2rem">${c.responsable||'—'}</div></div>
+          <div class="kpi verde"><div class="lbl">Ventas del turno</div><div class="val">${this.money(c.ventas)}</div><div class="sub">${c.nVentas} ventas</div></div>
+          <div class="kpi"><div class="lbl">Esperado en caja</div><div class="val">${this.money(c.esperadoEnCaja)}</div></div>
+        </div>
+        <div style="display:flex;gap:.6rem;margin-bottom:1.2rem;flex-wrap:wrap">
+          <button class="btn btn-violeta" onclick="App.ir('pos')">🛒 Ir al Punto de Venta</button>
+          <button class="btn" style="background:var(--err);color:#fff" onclick="App.cerrarCaja(${c.esperadoEnCaja})">Cerrar caja</button>
+        </div>
+        <div class="panel">
+          <h2>Movimientos del turno</h2>
+          <table class="tabla"><tbody>${movs}</tbody></table>
+        </div>`;
+    }catch(e){el.innerHTML='<div class="vacio">Error: '+e.message+'</div>';}
+  },
+  async abrirCaja(){
+    const resp=document.getElementById('caja-resp').value.trim();
+    const monto=Number(document.getElementById('caja-monto').value)||0;
+    try{
+      const r=await fetch(API+'/caja-abrir',{method:'POST',headers:this.headers(),body:JSON.stringify({responsable:resp,montoApertura:monto,token:this.token})});
+      const d=await r.json();
+      if(d.success){this.toast('Caja abierta ✓','ok');this.cargarCaja();}else this.toast(d.error||'Error','err');
+    }catch(e){this.toast(e.message,'err');}
+  },
+  async cerrarCaja(esperado){
+    const contado=prompt('Cierre de caja.\nMonto esperado en caja: '+this.money(esperado)+'\n\n¿Cuánto contaste realmente? (efectivo en caja)',String(esperado));
+    if(contado===null)return;
+    try{
+      const r=await fetch(API+'/caja-cerrar',{method:'POST',headers:this.headers(),body:JSON.stringify({montoContado:Number(contado)||0,token:this.token})});
+      const d=await r.json();
+      if(d.success){
+        const s=d.resumen;
+        const dif=s.diferencia;
+        alert('Caja cerrada ✓\n\nApertura: '+this.money(s.apertura)+'\nVentas: '+this.money(s.ventas)+'\nEsperado: '+this.money(s.esperado)+'\nContado: '+this.money(s.contado)+'\nDiferencia: '+this.money(dif)+(dif===0?' (exacto)':(dif>0?' (sobra)':' (falta)')));
+        this.cargarCaja();
+      }else this.toast(d.error||'Error','err');
+    }catch(e){this.toast(e.message,'err');}
+  },
+
+    toast(msg,tipo){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show '+(tipo||'');setTimeout(()=>{t.className='toast';},2400);}
 };
 document.getElementById('pin').addEventListener('keydown',e=>{if(e.key==='Enter')App.entrar();});
 App.init();
