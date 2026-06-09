@@ -76,8 +76,8 @@ async function procesarPago(opts) {
     resultado.pasos.push('stock_ya_descontado');
   }
 
-  // ---- 3) Facturar SOLO si el cliente lo pidió y no hay factura previa ----
-  if (pedido.quiere_factura) {
+  // ---- 3) Facturar SIEMPRE (consumidor final, automático) si no hay factura previa ----
+  {
     const { data: facturaPrevia } = await supabase
       .from('facturas').select('id, cae').eq('pedido_id', pedidoId).maybeSingle();
 
@@ -88,7 +88,7 @@ async function procesarPago(opts) {
         const f = await emitirFacturaC({
           importeTotal: pedido.total,
           concepto: 'Pedido Monnoserie #' + pedidoId,
-          docCliente: pedido.factura_cuit || ''
+          docCliente: pedido.factura_cuit || ''   // vacío = Consumidor Final
         });
         await supabase.from('facturas').insert({
           pedido_id: pedidoId, afip_numero: f.numeroComprobante, cae: f.cae, cae_vto: f.cae_vto,
@@ -113,14 +113,21 @@ async function procesarPago(opts) {
     resultado.pasos.push('estado_en_preparacion');
   }
 
-  // ---- 5) Email "pago confirmado" (fire-and-forget) ----
+  // ---- 5) Email "pago confirmado" con datos de factura si se emitió (fire-and-forget) ----
   const emailCli = pedido.clientes && pedido.clientes.email;
   if (emailCli) {
+    // Traer factura si se emitió en este ciclo
+    let facturaEmail = null;
+    if (pedido.quiere_factura) {
+      const { data: fac } = await supabase.from('facturas').select('afip_numero, cae, cae_vto, importe, qr_url, error').eq('pedido_id', pedidoId).maybeSingle();
+      if (fac && fac.cae) facturaEmail = { numero: fac.afip_numero, cae: fac.cae, cae_vto: fac.cae_vto, importe: fac.importe, qr: fac.qr_url };
+    }
     const r = await enviarNotificacion('pagado', emailCli, {
       id: pedidoId,
       nombre: pedido.clientes && pedido.clientes.nombre,
       total: pedido.total,
-      items: (pedido.detalle_pedidos || []).map(d => ({ nombre: d.nombre, cantidad: d.cantidad, subtotal: Number(d.subtotal) }))
+      items: (pedido.detalle_pedidos || []).map(d => ({ nombre: d.nombre, cantidad: d.cantidad, subtotal: Number(d.subtotal) })),
+      factura: facturaEmail
     });
     if (r.enviado) { await log(pedidoId, 'email_pagado', emailCli); resultado.pasos.push('email_enviado'); }
   }
