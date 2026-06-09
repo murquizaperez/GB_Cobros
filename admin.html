@@ -3,7 +3,7 @@
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Monnoserie · Sistema de gestión</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{
   --violeta:#5453A3; --violeta-vivo:#6346BA; --violeta-osc:#3F3E7A;
@@ -13,7 +13,7 @@
   --sidebar:#2a2942; --sidebar-2:#1f1e33;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Poppins',system-ui,sans-serif;background:var(--crema);color:var(--tinta)}
+body{font-family:'Poppins',system-ui,sans-serif;font-weight:300;background:var(--crema);color:var(--tinta)}
 h1,h2,h3,.fred{font-family:'Fredoka',sans-serif}
 
 /* LOGIN */
@@ -183,6 +183,7 @@ h1,h2,h3,.fred{font-family:'Fredoka',sans-serif}
     <div class="sb-group">
       <div class="sb-label">Pedidos</div>
       <button class="sb-item" data-sec="pedidos" onclick="App.ir('pedidos')"><span class="ic">📋</span>Pedidos online</button>
+      <button class="sb-item" data-sec="mayorista" onclick="App.ir('mayorista')"><span class="ic">🏢</span>Mayorista</button>
     </div>
     <div class="sb-group" data-rol="dueño">
       <div class="sb-label">Sistema</div>
@@ -234,6 +235,7 @@ h1,h2,h3,.fred{font-family:'Fredoka',sans-serif}
       <div class="seccion" id="sec-ingredientes"><div id="ing-body"></div></div>
       <div class="seccion" id="sec-produccion"><div id="prodc-body"></div></div>
       <div class="seccion" id="sec-planning"><div id="plan-body"></div></div>
+      <div class="seccion" id="sec-mayorista"><div id="may-body"></div></div>
       <div class="seccion" id="sec-reportes"><div id="rep-body"></div></div>
       <div class="seccion" id="sec-usuarios"><div id="usr-body"></div></div>
     </div>
@@ -262,7 +264,7 @@ const App = {
   token:'', seccion:'dashboard', filtro:'', pedidos:[], productos:[],
 
   rol:'', usuario:'',
-  ROLES:{ 'dueño':['dashboard','productos','ingredientes','produccion','planning','pos','caja','reportes','pedidos','usuarios'], 'cajero':['pos','caja','pedidos'] },
+  ROLES:{ 'dueño':['dashboard','productos','ingredientes','produccion','planning','pos','caja','reportes','pedidos','mayorista','usuarios'], 'cajero':['pos','caja','pedidos'] },
   async entrar(){
     const pin=document.getElementById('pin').value.trim();
     if(!pin){this.toast('Ingresá tu PIN','err');return;}
@@ -322,6 +324,7 @@ const App = {
     if(sec==='reportes')this.cargarReportes();
     if(sec==='usuarios')this.cargarUsuarios();
     if(sec==='planning')this.cargarPlanning();
+    if(sec==='mayorista')this.cargarMayoristas();
   },
   toggleMenu(){document.getElementById('sidebar').classList.toggle('abierto');},
 
@@ -975,10 +978,35 @@ const App = {
       const d=await r.json();
       const el=document.getElementById('lotes-body');if(!el)return;
       if(!d.lotes||!d.lotes.length){el.innerHTML='<div style="color:#aaa;text-align:center;padding:1rem">Sin lotes producidos aún</div>';return;}
-      el.innerHTML='<div style="overflow-x:auto"><table class="tabla"><thead><tr><th>Fecha</th><th>Producto</th><th>Cantidad</th><th>Costo</th><th>Responsable</th></tr></thead><tbody>'+
-        d.lotes.map(l=>`<tr><td style="font-size:.8rem;color:#888">${l.fecha?new Date(l.fecha).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):''}</td><td><b>${l.producto}</b></td><td>+${l.cantidad}</td><td>${this.money(l.costo)}</td><td>${l.responsable||'—'}</td></tr>`).join('')+
+      el.innerHTML='<div style="overflow-x:auto"><table class="tabla"><thead><tr><th>Fecha</th><th>Lote</th><th>Producto</th><th>Cantidad</th><th>Costo</th><th>Responsable</th></tr></thead><tbody>'+
+        d.lotes.map(l=>`<tr><td style="font-size:.8rem;color:#888">${l.fecha?new Date(l.fecha).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):''}</td><td>${l.codigo?`<button class="btn btn-sm btn-ghost" style="font-family:monospace;font-size:.72rem" onclick="App.verLote(${l.id})">${l.codigo}</button>`:'—'}</td><td><b>${l.producto}</b></td><td>+${l.cantidad}</td><td>${this.money(l.costo)}</td><td>${l.responsable||'—'}</td></tr>`).join('')+
         '</tbody></table></div>';
     }catch(e){}
+  },
+  async verLote(id){
+    this.abrirModal('Trazabilidad del lote','<div class="spin">Cargando…</div>');
+    try{
+      const r=await fetch(API+'/lote?id='+id+'&token='+encodeURIComponent(this.token),{headers:this.headers()});
+      const d=await r.json();
+      if(!d.success)throw new Error(d.error||'Error');
+      const l=d.lote;
+      const ings=l.ingredientes.length?l.ingredientes.map(i=>`<tr><td>${i.nombre}</td><td style="text-align:right">${i.cantidad} ${i.unidad}</td><td style="text-align:right;color:#888">${this.money(i.costo)}</td></tr>`).join(''):'<tr><td colspan="3" style="text-align:center;color:#aaa">Sin receta registrada</td></tr>';
+      document.getElementById('modal-body').innerHTML=`
+        <div style="background:#f6f4ef;border-radius:10px;padding:.8rem 1rem;margin-bottom:1rem">
+          <div style="font-family:monospace;font-size:1.1rem;font-weight:600;color:var(--violeta-osc)">${l.codigo||'—'}</div>
+          <div style="font-size:.82rem;color:#888;margin-top:.2rem">${new Date(l.fecha).toLocaleString('es-AR')} · ${l.responsable||'sin responsable'}</div>
+        </div>
+        <table class="tabla" style="margin-bottom:.8rem">
+          <tr><td>Producto</td><td style="text-align:right;font-weight:600">${l.producto}</td></tr>
+          <tr><td>Cantidad producida</td><td style="text-align:right;font-weight:600">${l.cantidad} u</td></tr>
+          <tr><td>Costo del lote</td><td style="text-align:right;font-weight:600">${this.money(l.costo)}</td></tr>
+          <tr><td>Costo unitario</td><td style="text-align:right">${this.money(l.cantidad?l.costo/l.cantidad:0)}</td></tr>
+        </table>
+        <h3 style="font-size:.9rem;color:var(--violeta-osc);margin:.5rem 0">Materia prima consumida</h3>
+        <table class="tabla"><thead><tr><th>Ingrediente</th><th style="text-align:right">Cantidad</th><th style="text-align:right">Costo</th></tr></thead><tbody>${ings}</tbody></table>
+        ${l.notas?`<p style="font-size:.8rem;color:#888;margin-top:.8rem"><b>Notas:</b> ${l.notas}</p>`:''}
+        <p style="font-size:.74rem;color:#aaa;margin-top:.8rem">Este código identifica el lote de punta a punta: qué insumos lo formaron y cuándo se produjo. Sirve para auditorías y para rastrear el origen ante cualquier reclamo.</p>`;
+    }catch(e){document.getElementById('modal-body').innerHTML='<div class="vacio">Error: '+e.message+'</div>';}
   },
 
   
@@ -998,6 +1026,7 @@ const App = {
       if(!d.success)throw new Error(d.error||'Error');
       try{const cc=await rc.json();if(cc.valor)this.margenMinimo=Number(cc.valor)||40;}catch(e){}
       this.renderReportes(d);
+      this.cargarClima(d.ventasPorDia||[]);
     }catch(e){el.innerHTML='<div class="vacio">Error: '+e.message+'</div>';}
   },
   setRepDias(n){this.repDias=n;this.cargarReportes();},
@@ -1078,7 +1107,8 @@ const App = {
         <h2>🧪 Consumo de ingredientes (estimado)</h2>
         <p style="font-size:.8rem;color:#888;margin-bottom:.6rem">Materia prima consumida según las ventas del período × las recetas.</p>
         ${this.graficoConsumo(d.consumoIngredientes||[])}
-      </div>`;
+      </div>
+      <div class="panel" id="clima-panel"><h2>🌦️ Clima vs ventas</h2><div id="clima-body"><div class="spin">Consultando el clima de Mendoza…</div></div></div>`;
   },
 
   
@@ -1386,6 +1416,133 @@ const App = {
       }catch(e){err++;}
     }
     this.toast('✓ '+ok+' lotes generados'+(err?' · '+err+' con error':''),err?'err':'ok');
+  },
+
+  
+  // ---------- CLIMA vs VENTAS (Open-Meteo / SMN) ----------
+  async cargarClima(ventasPorDia){
+    const cont=document.getElementById('clima-body');
+    if(!cont)return;
+    if(!ventasPorDia.length){cont.innerHTML='<div style="color:#aaa;text-align:center;padding:1rem">Sin ventas en el período para cruzar con el clima.</div>';return;}
+    const fechas=ventasPorDia.map(v=>v.fecha).sort();
+    const desde=fechas[0], hasta=fechas[fechas.length-1];
+    try{
+      const r=await fetch(API+'/clima?desde='+desde+'&hasta='+hasta+'&token='+encodeURIComponent(this.token),{headers:this.headers()});
+      const d=await r.json();
+      if(!d.success)throw new Error(d.error||'Error');
+      const climaPorFecha={};(d.dias||[]).forEach(x=>{climaPorFecha[x.fecha]=x;});
+      // Cruzar
+      const cruce=ventasPorDia.map(v=>({...v, clima:climaPorFecha[v.fecha]})).filter(x=>x.clima);
+      if(!cruce.length){cont.innerHTML='<div style="color:#aaa;text-align:center;padding:1rem">No se pudo cruzar el clima con las ventas del período.</div>';return;}
+      // Análisis lluvia vs seco
+      const lluvia=cruce.filter(x=>x.clima.lluvia>1);
+      const seco=cruce.filter(x=>x.clima.lluvia<=1);
+      const prom=arr=>arr.length?Math.round(arr.reduce((s,x)=>s+x.total,0)/arr.length):0;
+      const promLluvia=prom(lluvia), promSeco=prom(seco);
+      const difPct=promSeco?Math.round((promLluvia-promSeco)/promSeco*100):0;
+      // Análisis por temperatura
+      const fresco=cruce.filter(x=>x.clima.tmax<18), templado=cruce.filter(x=>x.clima.tmax>=18&&x.clima.tmax<=28), caluroso=cruce.filter(x=>x.clima.tmax>28);
+      // Insight
+      let insight='';
+      if(lluvia.length&&seco.length){
+        insight=difPct<-5?`Los días de lluvia vendés ~${Math.abs(difPct)}% menos que los secos.`:(difPct>5?`Curiosamente, los días de lluvia vendés ~${difPct}% más.`:'La lluvia no parece afectar mucho tus ventas.');
+      }
+      const tabla=cruce.slice(-14).map(x=>{
+        const ic=x.clima.lluvia>1?'🌧️':(x.clima.tmax>28?'☀️':(x.clima.tmax<12?'❄️':'⛅'));
+        return `<tr>
+          <td style="font-size:.82rem">${new Date(x.fecha+'T12:00').toLocaleDateString('es-AR',{weekday:'short',day:'numeric',month:'numeric'})}</td>
+          <td style="text-align:center">${ic}</td>
+          <td style="text-align:center;font-size:.82rem">${Math.round(x.clima.tmax)}°/${Math.round(x.clima.tmin)}°</td>
+          <td style="text-align:center;font-size:.82rem;color:${x.clima.lluvia>1?'var(--violeta-vivo)':'#bbb'}">${x.clima.lluvia>0?x.clima.lluvia+' mm':'—'}</td>
+          <td style="text-align:right;font-weight:600">${this.money(x.total)}</td>
+        </tr>`;
+      }).join('');
+      cont.innerHTML=`
+        ${insight?`<div class="aviso" style="margin-bottom:1rem">💡 ${insight}</div>`:''}
+        <div class="kpis" style="grid-template-columns:1fr 1fr;gap:.7rem;margin-bottom:1rem">
+          <div class="kpi"><div class="lbl">🌧️ Promedio días de lluvia</div><div class="val">${this.money(promLluvia)}</div><div class="sub">${lluvia.length} día(s)</div></div>
+          <div class="kpi"><div class="lbl">☀️ Promedio días secos</div><div class="val">${this.money(promSeco)}</div><div class="sub">${seco.length} día(s)</div></div>
+        </div>
+        <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:1rem;font-size:.82rem">
+          <div style="flex:1;min-width:120px;text-align:center;padding:.6rem;background:#f6f4ef;border-radius:10px"><div style="color:#888">❄️ Fresco (&lt;18°)</div><b>${this.money(prom(fresco))}</b><div style="color:#bbb;font-size:.72rem">${fresco.length}d</div></div>
+          <div style="flex:1;min-width:120px;text-align:center;padding:.6rem;background:#f6f4ef;border-radius:10px"><div style="color:#888">⛅ Templado</div><b>${this.money(prom(templado))}</b><div style="color:#bbb;font-size:.72rem">${templado.length}d</div></div>
+          <div style="flex:1;min-width:120px;text-align:center;padding:.6rem;background:#f6f4ef;border-radius:10px"><div style="color:#888">☀️ Caluroso (&gt;28°)</div><b>${this.money(prom(caluroso))}</b><div style="color:#bbb;font-size:.72rem">${caluroso.length}d</div></div>
+        </div>
+        <table class="tabla"><thead><tr><th>Día</th><th style="text-align:center">Clima</th><th style="text-align:center">Temp</th><th style="text-align:center">Lluvia</th><th style="text-align:right">Ventas</th></tr></thead><tbody>${tabla}</tbody></table>
+        <p style="font-size:.72rem;color:#aaa;margin-top:.7rem">Fuente: ${d.fuente} · Mendoza. Últimos 14 días del período.</p>`;
+    }catch(e){cont.innerHTML='<div style="color:#aaa;text-align:center;padding:1rem">No se pudo obtener el clima en este momento.</div>';}
+  },
+
+  
+  // ---------- PUNTO 5b: MAYORISTAS ----------
+  mayoristas:[],
+  async cargarMayoristas(){
+    const el=document.getElementById('may-body');
+    el.innerHTML='<div class="spin">Cargando…</div>';
+    try{
+      const r=await fetch(API+'/mayoristas?token='+encodeURIComponent(this.token),{headers:this.headers()});
+      if(r.status===401){this.salir('Sesión inválida');return;}
+      const d=await r.json();
+      if(!d.success)throw new Error(d.error||'Error');
+      this.mayoristas=d.clientes||[];
+      const filas=this.mayoristas.map(c=>`
+        <tr>
+          <td><b>${c.nombre}</b><div style="font-size:.75rem;color:#aaa">${c.contacto||''} ${c.telefono||''}</div></td>
+          <td><code style="background:#f6f4ef;padding:.2rem .5rem;border-radius:6px;font-size:.82rem">${c.codigo_acceso}</code></td>
+          <td><button class="toggle ${c.activo?'on':'off'}" onclick="App.toggleMayorista(${c.id},${!c.activo})">${c.activo?'Activo':'Inactivo'}</button></td>
+          <td style="text-align:right;white-space:nowrap">
+            <button class="btn btn-sm btn-violeta" onclick="App.editarPreciosMay(${c.id},'${c.nombre.replace(/'/g,"")}')">💲 Precios</button>
+            <button class="btn btn-sm" style="background:#fde8e6;color:#b13a34" onclick="App.borrarMayorista(${c.id},'${c.nombre.replace(/'/g,"")}')">🗑</button>
+          </td>
+        </tr>`).join('');
+      el.innerHTML=`
+        <div class="panel">
+          <div style="display:flex;align-items:center;margin-bottom:.8rem">
+            <h2 style="margin:0">Clientes mayoristas (${this.mayoristas.length})</h2>
+            <button class="btn btn-violeta" style="margin-left:auto" onclick="App.nuevoMayorista()">+ Nuevo cliente</button>
+          </div>
+          <table class="tabla"><thead><tr><th>Cliente</th><th>Código de acceso</th><th>Estado</th><th></th></tr></thead><tbody>${filas||'<tr><td colspan="4" style="text-align:center;color:#aaa;padding:1rem">Sin clientes mayoristas todavía</td></tr>'}</tbody></table>
+          <p style="font-size:.8rem;color:#888;margin-top:.8rem">Cada cliente entra al portal mayorista en <code>/mayorista.html</code> con su código de acceso y ve su propia lista de precios.</p>
+        </div>`;
+    }catch(e){el.innerHTML='<div class="vacio">Error: '+e.message+'</div>';}
+  },
+  async nuevoMayorista(){
+    const nombre=prompt('Nombre del cliente mayorista (ej: Café Central):');if(!nombre)return;
+    const codigo=prompt('Código de acceso para que entre al portal (ej: CAFE2026):');if(!codigo)return;
+    const telefono=prompt('Teléfono (opcional):')||'';
+    try{const r=await fetch(API+'/mayoristas',{method:'POST',headers:this.headers(),body:JSON.stringify({accion:'crear',nombre,codigoAcceso:codigo,telefono,token:this.token})});
+      const d=await r.json();if(d.success){this.toast('Cliente creado','ok');this.cargarMayoristas();}else this.toast(d.error,'err');}catch(e){this.toast(e.message,'err');}
+  },
+  async toggleMayorista(id,activo){
+    try{const r=await fetch(API+'/mayoristas',{method:'POST',headers:this.headers(),body:JSON.stringify({accion:'editar',id,activo,token:this.token})});
+      const d=await r.json();if(d.success)this.cargarMayoristas();else this.toast(d.error,'err');}catch(e){this.toast(e.message,'err');}
+  },
+  async borrarMayorista(id,nombre){
+    if(!confirm('¿Borrar a "'+nombre+'" y su lista de precios?'))return;
+    try{const r=await fetch(API+'/mayoristas',{method:'POST',headers:this.headers(),body:JSON.stringify({accion:'borrar',id,token:this.token})});
+      const d=await r.json();if(d.success){this.toast('Borrado','ok');this.cargarMayoristas();}else this.toast(d.error,'err');}catch(e){this.toast(e.message,'err');}
+  },
+  async editarPreciosMay(id,nombre){
+    this.abrirModal('Lista de precios · '+nombre,'<div class="spin">Cargando…</div>');
+    try{
+      const r=await fetch(API+'/mayoristas?clienteId='+id+'&token='+encodeURIComponent(this.token),{headers:this.headers()});
+      const d=await r.json();
+      if(!d.success)throw new Error(d.error||'Error');
+      const filas=d.productos.map(p=>`
+        <tr>
+          <td style="font-size:.85rem"><b>${p.nombre}</b><div style="font-size:.72rem;color:#aaa">minorista ${this.money(p.precioMinorista)} · general may. ${this.money(p.precioMayorista)}</div></td>
+          <td><input id="mayp-${p.id}" type="number" step="any" value="${p.precioCliente!==null?p.precioCliente:''}" placeholder="${p.precioMayorista||'—'}" data-pid="${p.id}" class="mayprecio" style="width:90px;padding:.4rem;border:1px solid #ddd;border-radius:8px;text-align:right;font-family:'Fredoka'"></td>
+        </tr>`).join('');
+      document.getElementById('modal-body').innerHTML=`
+        <p style="font-size:.82rem;color:#888;margin-bottom:.8rem">Precio especial de este cliente por producto. Si lo dejás vacío, usa el precio mayorista general. Vacío o 0 = sin precio especial.</p>
+        <div style="max-height:48vh;overflow-y:auto"><table class="tabla"><thead><tr><th>Producto</th><th style="text-align:right">Precio cliente</th></tr></thead><tbody>${filas}</tbody></table></div>
+        <button class="btn btn-violeta" style="width:100%;margin-top:1rem" onclick="App.guardarPreciosMay(${id})">Guardar lista de precios</button>`;
+    }catch(e){document.getElementById('modal-body').innerHTML='<div class="vacio">Error: '+e.message+'</div>';}
+  },
+  async guardarPreciosMay(id){
+    const precios=[...document.querySelectorAll('.mayprecio')].map(el=>({productoId:Number(el.dataset.pid),precio:Number(el.value)||0}));
+    try{const r=await fetch(API+'/mayoristas',{method:'POST',headers:this.headers(),body:JSON.stringify({accion:'precios',id,precios,token:this.token})});
+      const d=await r.json();if(d.success){this.cerrarModal();this.toast('✓ Lista de precios guardada','ok');}else this.toast(d.error,'err');}catch(e){this.toast(e.message,'err');}
   },
 
     toast(msg,tipo){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show '+(tipo||'');setTimeout(()=>{t.className='toast';},2400);}
