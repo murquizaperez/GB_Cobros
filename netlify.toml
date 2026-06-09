@@ -179,3 +179,13 @@
   from = "/api/sugerencias"
   to = "/.netlify/functions/sugerencias"
   status = 200
+
+[[redirects]]
+  from = "/api/cuenta-corriente"
+  to = "/.netlify/functions/cuenta-corriente"
+  status = 200
+
+[[redirects]]
+  from = "/api/indicadores-facturacion"
+  to = "/.netlify/functions/indicadores-facturacion"
+  status = 200
