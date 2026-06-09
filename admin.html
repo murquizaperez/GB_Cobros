@@ -185,6 +185,7 @@ h1,h2,h3,.fred{font-family:'Fredoka',sans-serif}
       <button class="sb-item" data-sec="pedidos" onclick="App.ir('pedidos')"><span class="ic">📋</span>Pedidos online</button>
       <button class="sb-item" data-sec="mayorista" onclick="App.ir('mayorista')"><span class="ic">🏢</span>Mayorista</button>
       <button class="sb-item" data-sec="promos" onclick="App.ir('promos')"><span class="ic">🎉</span>Promociones</button>
+      <button class="sb-item" data-sec="cuentacorriente" onclick="App.ir('cuentacorriente')"><span class="ic">💳</span>Cuenta corriente</button>
     </div>
     <div class="sb-group" data-rol="dueño">
       <div class="sb-label">Sistema</div>
@@ -238,6 +239,7 @@ h1,h2,h3,.fred{font-family:'Fredoka',sans-serif}
       <div class="seccion" id="sec-planning"><div id="plan-body"></div></div>
       <div class="seccion" id="sec-mayorista"><div id="may-body"></div></div>
       <div class="seccion" id="sec-promos"><div id="promos-body"></div></div>
+      <div class="seccion" id="sec-cuentacorriente"><div id="cc-body"></div></div>
       <div class="seccion" id="sec-reportes"><div id="rep-body"></div></div>
       <div class="seccion" id="sec-usuarios"><div id="usr-body"></div></div>
     </div>
@@ -266,7 +268,7 @@ const App = {
   token:'', seccion:'dashboard', filtro:'', pedidos:[], productos:[],
 
   rol:'', usuario:'',
-  ROLES:{ 'dueño':['dashboard','productos','ingredientes','produccion','planning','pos','caja','reportes','pedidos','mayorista','promos','usuarios'], 'cajero':['pos','caja','pedidos'] },
+  ROLES:{ 'dueño':['dashboard','productos','ingredientes','produccion','planning','pos','caja','reportes','pedidos','mayorista','promos','cuentacorriente','usuarios'], 'cajero':['pos','caja','pedidos'] },
   async entrar(){
     const pin=document.getElementById('pin').value.trim();
     if(!pin){this.toast('Ingresá tu PIN','err');return;}
@@ -328,6 +330,7 @@ const App = {
     if(sec==='planning')this.cargarPlanning();
     if(sec==='mayorista')this.cargarMayoristas();
     if(sec==='promos')this.cargarPromos();
+    if(sec==='cuentacorriente')this.cargarCuentaCorriente();
   },
   toggleMenu(){document.getElementById('sidebar').classList.toggle('abierto');},
 
@@ -869,7 +872,10 @@ const App = {
       if(!d.success)throw new Error(d.error||'Error');
       if(!d.sugerencias.length){cont.innerHTML='<div style="color:#aaa;text-align:center;padding:1rem">Sin datos de ventas para ese día todavía. La predicción mejora a medida que se acumulan ventas.</div>';return;}
       const muestra=d.muestras?`Basado en ${d.muestras} ${d.muestras===1?'día':'días'} de ese tipo en el historial.`:'Todavía sin historial de ese día — se muestran pedidos pendientes.';
-      const filas=d.sugerencias.map(s=>{
+      // Ordenar por ganancia potencial para priorizar lo más rentable
+      const sug=[...d.sugerencias].sort((a,b)=>(b.gananciaPotencial||0)-(a.gananciaPotencial||0));
+      const gananciaTotal=sug.reduce((s,x)=>s+(x.gananciaPotencial||0),0);
+      const filas=sug.map(s=>{
         const alerta=(s.sugerido>0&&s.tieneReceta&&!s.materiaOk)?` <span title="Falta: ${s.faltan.join(', ')}" style="color:var(--err)">⚠️</span>`:'';
         const btn=s.sugerido>0?`<button class="btn btn-sm btn-violeta" onclick="App.producirSugerido(${s.productoId},${s.sugerido})">Producir ${s.sugerido}</button>`:'<span style="color:var(--ok);font-size:.8rem">stock ok</span>';
         return `<tr>
@@ -878,16 +884,18 @@ const App = {
           <td style="text-align:center" title="Pedidos del portal pendientes">${s.pedidos||'—'}</td>
           <td style="text-align:center;color:#888">${s.stock}</td>
           <td style="text-align:center;font-weight:700;color:var(--violeta-vivo)">${s.sugerido}</td>
+          <td style="text-align:right;font-size:.82rem" title="Margen unitario ${this.money(s.margenUnit||0)}">${s.gananciaPotencial>0?this.money(s.gananciaPotencial):'—'}</td>
           <td style="text-align:right">${btn}</td>
         </tr>`;
       }).join('');
       cont.innerHTML=`
         <p style="font-size:.8rem;color:#888;margin-bottom:.6rem">${muestra}</p>
         <div style="overflow-x:auto"><table class="tabla">
-          <thead><tr><th>Producto</th><th style="text-align:center">Demanda</th><th style="text-align:center">Pedidos</th><th style="text-align:center">Stock</th><th style="text-align:center">Producir</th><th></th></tr></thead>
+          <thead><tr><th>Producto</th><th style="text-align:center">Demanda</th><th style="text-align:center">Pedidos</th><th style="text-align:center">Stock</th><th style="text-align:center">Producir</th><th style="text-align:right">Ganancia</th><th></th></tr></thead>
           <tbody>${filas}</tbody>
+          ${gananciaTotal>0?`<tfoot><tr style="border-top:2px solid #eee"><td colspan="5" style="font-weight:600;color:var(--violeta-osc)">Ganancia potencial del día</td><td style="text-align:right;font-weight:700;color:var(--ok)">${this.money(gananciaTotal)}</td><td></td></tr></tfoot>`:''}
         </table></div>
-        <p style="font-size:.74rem;color:#aaa;margin-top:.6rem">Producir = demanda esperada + pedidos confirmados − stock actual. ⚠️ = puede faltar materia prima.</p>`;
+        <p style="font-size:.74rem;color:#aaa;margin-top:.6rem">Producir = demanda + pedidos − stock. Ganancia = margen × cantidad a producir. Ordenado por lo más rentable. ⚠️ = puede faltar materia prima.</p>`;
     }catch(e){cont.innerHTML='<div class="vacio">Error: '+e.message+'</div>';}
   },
   producirSugerido(productoId,cantidad){
@@ -1450,26 +1458,36 @@ const App = {
       if(lluvia.length&&seco.length){
         insight=difPct<-5?`Los días de lluvia vendés ~${Math.abs(difPct)}% menos que los secos.`:(difPct>5?`Curiosamente, los días de lluvia vendés ~${difPct}% más.`:'La lluvia no parece afectar mucho tus ventas.');
       }
+      // Ventas máximas del tramo para barra comparativa
+      const maxVenta=Math.max(1,...cruce.slice(-14).map(x=>x.total));
       const tabla=cruce.slice(-14).map(x=>{
-        const ic=x.clima.lluvia>1?'🌧️':(x.clima.tmax>28?'☀️':(x.clima.tmax<12?'❄️':'⛅'));
+        const lluvioso=x.clima.lluvia>1;
+        const ic=lluvioso?'🌧️':(x.clima.tmax>28?'☀️':(x.clima.tmax<12?'❄️':'⛅'));
+        const etiqueta=lluvioso?'Lluvia':(x.clima.tmax>28?'Caluroso':(x.clima.tmax<12?'Frío':'Templado'));
+        const pct=Math.round(x.total/maxVenta*100);
         return `<tr>
-          <td style="font-size:.82rem">${new Date(x.fecha+'T12:00').toLocaleDateString('es-AR',{weekday:'short',day:'numeric',month:'numeric'})}</td>
-          <td style="text-align:center">${ic}</td>
-          <td style="text-align:center;font-size:.82rem">${Math.round(x.clima.tmax)}°/${Math.round(x.clima.tmin)}°</td>
-          <td style="text-align:center;font-size:.82rem;color:${x.clima.lluvia>1?'var(--violeta-vivo)':'#bbb'}">${x.clima.lluvia>0?x.clima.lluvia+' mm':'—'}</td>
-          <td style="text-align:right;font-weight:600">${this.money(x.total)}</td>
+          <td style="font-size:.9rem;text-transform:capitalize">${new Date(x.fecha+'T12:00').toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'short'})}</td>
+          <td style="text-align:center"><span style="font-size:1.8rem;line-height:1" title="${etiqueta}">${ic}</span></td>
+          <td style="text-align:center;font-size:.92rem;font-weight:500">${Math.round(x.clima.tmax)}° <span style="color:#bbb;font-weight:400">/ ${Math.round(x.clima.tmin)}°</span></td>
+          <td style="text-align:center;font-size:.88rem;color:${lluvioso?'var(--violeta-vivo)':'#ccc'};font-weight:${lluvioso?'600':'400'}">${x.clima.lluvia>0?x.clima.lluvia+' mm':'—'}</td>
+          <td style="text-align:right;min-width:120px">
+            <div style="display:flex;align-items:center;gap:.5rem;justify-content:flex-end">
+              <div style="flex:1;max-width:80px;height:7px;background:#f0ede7;border-radius:4px;overflow:hidden"><div style="width:${pct}%;height:100%;background:linear-gradient(90deg,var(--violeta),var(--violeta-vivo))"></div></div>
+              <span style="font-weight:600;font-size:.9rem">${this.money(x.total)}</span>
+            </div>
+          </td>
         </tr>`;
       }).join('');
       cont.innerHTML=`
-        ${insight?`<div class="aviso" style="margin-bottom:1rem">💡 ${insight}</div>`:''}
+        ${insight?`<div class="aviso" style="margin-bottom:1rem;font-size:.95rem">💡 ${insight}</div>`:''}
         <div class="kpis" style="grid-template-columns:1fr 1fr;gap:.7rem;margin-bottom:1rem">
-          <div class="kpi"><div class="lbl">🌧️ Promedio días de lluvia</div><div class="val">${this.money(promLluvia)}</div><div class="sub">${lluvia.length} día(s)</div></div>
-          <div class="kpi"><div class="lbl">☀️ Promedio días secos</div><div class="val">${this.money(promSeco)}</div><div class="sub">${seco.length} día(s)</div></div>
+          <div class="kpi" style="text-align:center"><div style="font-size:2.4rem;line-height:1;margin-bottom:.2rem">🌧️</div><div class="lbl">Promedio días de lluvia</div><div class="val">${this.money(promLluvia)}</div><div class="sub">${lluvia.length} día(s)</div></div>
+          <div class="kpi" style="text-align:center"><div style="font-size:2.4rem;line-height:1;margin-bottom:.2rem">☀️</div><div class="lbl">Promedio días secos</div><div class="val">${this.money(promSeco)}</div><div class="sub">${seco.length} día(s)</div></div>
         </div>
-        <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:1rem;font-size:.82rem">
-          <div style="flex:1;min-width:120px;text-align:center;padding:.6rem;background:#f6f4ef;border-radius:10px"><div style="color:#888">❄️ Fresco (&lt;18°)</div><b>${this.money(prom(fresco))}</b><div style="color:#bbb;font-size:.72rem">${fresco.length}d</div></div>
-          <div style="flex:1;min-width:120px;text-align:center;padding:.6rem;background:#f6f4ef;border-radius:10px"><div style="color:#888">⛅ Templado</div><b>${this.money(prom(templado))}</b><div style="color:#bbb;font-size:.72rem">${templado.length}d</div></div>
-          <div style="flex:1;min-width:120px;text-align:center;padding:.6rem;background:#f6f4ef;border-radius:10px"><div style="color:#888">☀️ Caluroso (&gt;28°)</div><b>${this.money(prom(caluroso))}</b><div style="color:#bbb;font-size:.72rem">${caluroso.length}d</div></div>
+        <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:1rem">
+          <div style="flex:1;min-width:120px;text-align:center;padding:.8rem .6rem;background:#f6f4ef;border-radius:12px"><div style="font-size:2rem;line-height:1">❄️</div><div style="color:#888;font-size:.82rem;margin:.3rem 0">Fresco<br><span style="color:#bbb;font-size:.72rem">menos de 18°</span></div><b style="font-size:1.05rem">${this.money(prom(fresco))}</b><div style="color:#bbb;font-size:.72rem">${fresco.length} días</div></div>
+          <div style="flex:1;min-width:120px;text-align:center;padding:.8rem .6rem;background:#f6f4ef;border-radius:12px"><div style="font-size:2rem;line-height:1">⛅</div><div style="color:#888;font-size:.82rem;margin:.3rem 0">Templado<br><span style="color:#bbb;font-size:.72rem">18° a 28°</span></div><b style="font-size:1.05rem">${this.money(prom(templado))}</b><div style="color:#bbb;font-size:.72rem">${templado.length} días</div></div>
+          <div style="flex:1;min-width:120px;text-align:center;padding:.8rem .6rem;background:#f6f4ef;border-radius:12px"><div style="font-size:2rem;line-height:1">☀️</div><div style="color:#888;font-size:.82rem;margin:.3rem 0">Caluroso<br><span style="color:#bbb;font-size:.72rem">más de 28°</span></div><b style="font-size:1.05rem">${this.money(prom(caluroso))}</b><div style="color:#bbb;font-size:.72rem">${caluroso.length} días</div></div>
         </div>
         <table class="tabla"><thead><tr><th>Día</th><th style="text-align:center">Clima</th><th style="text-align:center">Temp</th><th style="text-align:center">Lluvia</th><th style="text-align:right">Ventas</th></tr></thead><tbody>${tabla}</tbody></table>
         <p style="font-size:.72rem;color:#aaa;margin-top:.7rem">Fuente: ${d.fuente} · Mendoza. Últimos 14 días del período.</p>`;
@@ -1630,6 +1648,92 @@ const App = {
     if(!confirm('¿Borrar esta promoción?'))return;
     try{const r=await fetch(API+'/promociones',{method:'POST',headers:this.headers(),body:JSON.stringify({accion:'borrar',id,token:this.token})});
       const d=await r.json();if(d.success){this.toast('Borrada','ok');this.cargarPromos();}else this.toast(d.error,'err');}catch(e){this.toast(e.message,'err');}
+  },
+
+  
+  // ---------- CUENTA CORRIENTE + INDICADORES DE FACTURACIÓN ----------
+  ccClientes:[],
+  async cargarCuentaCorriente(){
+    const el=document.getElementById('cc-body');
+    el.innerHTML='<div class="spin">Cargando…</div>';
+    try{
+      const [rcc,rind]=await Promise.all([
+        fetch(API+'/cuenta-corriente?token='+encodeURIComponent(this.token),{headers:this.headers()}),
+        fetch(API+'/indicadores-facturacion?token='+encodeURIComponent(this.token),{headers:this.headers()})
+      ]);
+      if(rcc.status===401){this.salir('Sesión inválida');return;}
+      const d=await rcc.json(); const ind=await rind.json();
+      if(!d.success)throw new Error(d.error||'Error');
+      this.ccClientes=d.clientes||[];
+      const conDeuda=this.ccClientes.filter(c=>c.saldo>0.5);
+      const filas=this.ccClientes.filter(c=>Math.abs(c.saldo)>0.5).map(c=>{
+        const deudor=c.saldo>0;
+        return `<tr>
+          <td><b>${c.nombre||c.email}</b><div style="font-size:.72rem;color:#aaa">${c.email}</div></td>
+          <td style="text-align:right;font-weight:600;font-size:1.05rem;color:${deudor?'var(--err)':'var(--ok)'}">${this.money(c.saldo)}</td>
+          <td style="text-align:right;white-space:nowrap">
+            <button class="btn btn-sm btn-violeta" onclick="App.ccPago('${c.email.replace(/'/g,"")}','${(c.nombre||'').replace(/'/g,"")}')">💵 Cobrar</button>
+            <button class="btn btn-sm btn-ghost" onclick="App.ccVer('${c.email.replace(/'/g,"")}','${(c.nombre||'').replace(/'/g,"")}')">Ver</button>
+          </td>
+        </tr>`;
+      }).join('');
+      // Panel de indicadores de facturación
+      const fac=ind.success?`
+        <div class="panel">
+          <h2>🧾 Indicadores de facturación</h2>
+          <div class="kpis" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.7rem">
+            <div class="kpi"><div class="lbl">Total de pedidos</div><div class="val">${ind.totalPedidos}</div></div>
+            <div class="kpi"><div class="lbl">Con factura</div><div class="val" style="color:var(--ok)">${ind.conFactura}</div></div>
+            <div class="kpi"><div class="lbl">Sin factura</div><div class="val" style="color:var(--warn)">${ind.sinFactura}</div></div>
+            <div class="kpi"><div class="lbl">% facturado</div><div class="val">${ind.porcentajeFacturado}%</div></div>
+            <div class="kpi"><div class="lbl">Total facturado</div><div class="val">${this.money(ind.totalFacturado)}</div></div>
+          </div>
+        </div>`:'';
+      el.innerHTML=`
+        ${fac}
+        <div class="panel">
+          <div style="display:flex;align-items:center;flex-wrap:wrap;gap:.5rem;margin-bottom:.8rem">
+            <h2 style="margin:0">💳 Saldos de clientes</h2>
+            <span class="badge" style="background:#fde8e6;color:#b13a34">Deuda total: ${this.money(d.deudaTotal)}</span>
+            <button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="App.ccAjuste()">⚙️ Saldo inicial</button>
+          </div>
+          <p style="font-size:.82rem;color:#888;margin-bottom:.8rem">${conDeuda.length} cliente(s) con deuda. En rojo deben, en verde tienen saldo a favor.</p>
+          <table class="tabla"><thead><tr><th>Cliente</th><th style="text-align:right">Saldo</th><th></th></tr></thead><tbody>${filas||'<tr><td colspan="3" style="text-align:center;color:#aaa;padding:1rem">Sin saldos pendientes</td></tr>'}</tbody></table>
+        </div>`;
+    }catch(e){el.innerHTML='<div class="vacio">Error: '+e.message+'</div>';}
+  },
+  async ccPago(email,nombre){
+    const monto=prompt('Monto del pago en efectivo de '+(nombre||email)+':');
+    if(!monto)return;
+    const m=Number(monto); if(!m||m<=0){this.toast('Monto inválido','err');return;}
+    try{const r=await fetch(API+'/cuenta-corriente',{method:'POST',headers:this.headers(),body:JSON.stringify({accion:'pago',email,nombre,monto:m,token:this.token})});
+      const d=await r.json();if(d.success){this.toast('✓ Pago registrado · saldo: '+this.money(d.saldo),'ok');this.cargarCuentaCorriente();}else this.toast(d.error,'err');}catch(e){this.toast(e.message,'err');}
+  },
+  ccAjuste(){
+    const email=prompt('Email del cliente para configurar saldo inicial:');
+    if(!email)return;
+    const monto=prompt('Saldo inicial (cuánto debe):');
+    if(!monto)return;
+    const m=Number(monto); if(isNaN(m)){this.toast('Monto inválido','err');return;}
+    fetch(API+'/cuenta-corriente',{method:'POST',headers:this.headers(),body:JSON.stringify({accion:'ajuste',email:email.trim().toLowerCase(),monto:m,detalle:'Saldo inicial',token:this.token})})
+      .then(r=>r.json()).then(d=>{if(d.success){this.toast('✓ Saldo configurado','ok');this.cargarCuentaCorriente();}else this.toast(d.error,'err');}).catch(e=>this.toast(e.message,'err'));
+  },
+  async ccVer(email,nombre){
+    this.abrirModal('Cuenta corriente · '+(nombre||email),'<div class="spin">Cargando…</div>');
+    try{
+      const r=await fetch(API+'/cuenta-corriente?email='+encodeURIComponent(email)+'&token='+encodeURIComponent(this.token),{headers:this.headers()});
+      const d=await r.json();
+      const movs=(d.movimientos||[]).map(m=>{
+        const suma=Number(m.monto)>0;
+        return `<tr><td style="font-size:.78rem;color:#888">${m.fecha?new Date(m.fecha).toLocaleDateString('es-AR'):''}</td><td style="font-size:.82rem">${m.detalle||m.tipo}</td><td style="text-align:right;font-weight:600;color:${suma?'var(--err)':'var(--ok)'}">${suma?'+':''}${this.money(m.monto)}</td></tr>`;
+      }).join('');
+      document.getElementById('modal-body').innerHTML=`
+        <div style="background:#f6f4ef;border-radius:10px;padding:.8rem 1rem;margin-bottom:1rem;text-align:center">
+          <div style="font-size:.8rem;color:#888">Saldo actual</div>
+          <div class="fred" style="font-size:1.8rem;font-weight:700;color:${d.saldo>0?'var(--err)':'var(--ok)'}">${this.money(d.saldo)}</div>
+        </div>
+        <table class="tabla"><thead><tr><th>Fecha</th><th>Detalle</th><th style="text-align:right">Monto</th></tr></thead><tbody>${movs||'<tr><td colspan=3 style="text-align:center;color:#aaa">Sin movimientos</td></tr>'}</tbody></table>`;
+    }catch(e){document.getElementById('modal-body').innerHTML='<div class="vacio">Error: '+e.message+'</div>';}
   },
 
     toast(msg,tipo){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show '+(tipo||'');setTimeout(()=>{t.className='toast';},2400);}
