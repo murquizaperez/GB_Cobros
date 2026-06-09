@@ -53,7 +53,7 @@ exports.handler = async (event) => {
 
     // 2) Productos activos con stock
     const { data: productos } = await supabase
-      .from('productos').select('id, nombre, stock, activo, precio_minorista').eq('activo', true);
+      .from('productos').select('id, nombre, stock, activo, precio_minorista, costo_unitario').eq('activo', true);
 
     // 3) Pedidos del portal pendientes (demanda confirmada futura)
     const { data: pend } = await supabase
@@ -93,9 +93,14 @@ exports.handler = async (event) => {
         if (sugerido > 0 && Number(ing.stock_actual) <= 0) { materiaOk = false; faltan.push(ing.nombre); }
       });
 
+      const precio = Number(p.precio_minorista) || 0;
+      const costo = Number(p.costo_unitario) || 0;
+      const margenUnit = precio - costo;
       return {
         productoId: p.id, nombre: p.nombre,
         demanda, pedidos, stock, sugerido,
+        precio, costo, margenUnit,
+        gananciaPotencial: Math.round(margenUnit * sugerido),
         tieneReceta: !!(recetaPorProd[p.id] && recetaPorProd[p.id].length),
         materiaOk, faltan
       };
