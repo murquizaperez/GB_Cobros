@@ -25,7 +25,7 @@ exports.handler = async (event) => {
     try {
       if (email) {
         const { data } = await supabase.from('cuenta_corriente')
-          .select('tipo, monto, detalle, fecha').eq('cliente_email', email)
+          .select('tipo, monto, detalle, comprobante_url, metodo, fecha').eq('cliente_email', email)
           .order('fecha', { ascending: false });
         let saldo = 0;
         (data || []).forEach(m => { saldo += Number(m.monto); });
@@ -71,7 +71,9 @@ exports.handler = async (event) => {
     await supabase.from('cuenta_corriente').insert({
       cliente_email: email, cliente_nombre: String(body.nombre || ''),
       tipo, monto: signo * Math.abs(monto),
-      detalle: String(body.detalle || (tipo === 'pago' ? 'Pago en efectivo' : tipo === 'ajuste' ? 'Ajuste de saldo' : 'Cargo'))
+      detalle: String(body.detalle || (tipo === 'pago' ? 'Pago' : tipo === 'ajuste' ? 'Ajuste de saldo' : 'Cargo')),
+      comprobante_url: String(body.comprobanteUrl || ''),
+      metodo: String(body.metodo || '')
     });
     // saldo nuevo
     const { data } = await supabase.from('cuenta_corriente').select('monto').eq('cliente_email', email);
