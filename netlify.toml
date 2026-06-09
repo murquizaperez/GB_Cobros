@@ -6,6 +6,11 @@
   node_bundler = "nft"
 
 [[redirects]]
+  from = "/"
+  to = "/tienda.html"
+  status = 200
+
+[[redirects]]
   from = "/api/catalogo"
   to = "/.netlify/functions/catalogo"
   status = 200
@@ -118,4 +123,59 @@
 [[redirects]]
   from = "/api/config"
   to = "/.netlify/functions/config"
+  status = 200
+
+[[redirects]]
+  from = "/api/registrar-compra"
+  to = "/.netlify/functions/registrar-compra"
+  status = 200
+
+[[redirects]]
+  from = "/api/recalcular-costos"
+  to = "/.netlify/functions/recalcular-costos"
+  status = 200
+
+[[redirects]]
+  from = "/api/recuento"
+  to = "/.netlify/functions/recuento"
+  status = 200
+
+[[redirects]]
+  from = "/api/prediccion"
+  to = "/.netlify/functions/prediccion"
+  status = 200
+
+[[redirects]]
+  from = "/api/planning"
+  to = "/.netlify/functions/planning"
+  status = 200
+
+[[redirects]]
+  from = "/api/clima"
+  to = "/.netlify/functions/clima"
+  status = 200
+
+[[redirects]]
+  from = "/api/lote"
+  to = "/.netlify/functions/lote"
+  status = 200
+
+[[redirects]]
+  from = "/api/mayoristas"
+  to = "/.netlify/functions/mayoristas"
+  status = 200
+
+[[redirects]]
+  from = "/api/portal-mayorista"
+  to = "/.netlify/functions/portal-mayorista"
+  status = 200
+
+[[redirects]]
+  from = "/api/promociones"
+  to = "/.netlify/functions/promociones"
+  status = 200
+
+[[redirects]]
+  from = "/api/sugerencias"
+  to = "/.netlify/functions/sugerencias"
   status = 200
