@@ -28,12 +28,12 @@ exports.handler = async (event) => {
     try {
       const { data } = await supabase
         .from('lotes_produccion')
-        .select('id, cantidad_producida, costo_total, ingredientes_ok, responsable, notas, fecha, productos(nombre)')
+        .select('id, codigo_trazabilidad, cantidad_producida, costo_total, ingredientes_ok, responsable, notas, fecha, productos(nombre)')
         .order('fecha', { ascending: false }).limit(40);
       return ok({
         success: true,
         lotes: (data || []).map(l => ({
-          id: l.id, producto: l.productos ? l.productos.nombre : '',
+          id: l.id, codigo: l.codigo_trazabilidad, producto: l.productos ? l.productos.nombre : '',
           cantidad: Number(l.cantidad_producida), costo: Number(l.costo_total),
           ingredientesOk: l.ingredientes_ok, responsable: l.responsable, notas: l.notas, fecha: l.fecha
         }))
@@ -61,20 +61,26 @@ exports.handler = async (event) => {
     // Receta
     const { data: receta } = await supabase
       .from('recetas')
-      .select('ingrediente_id, cantidad, ingredientes(nombre, stock_actual, costo_unitario)')
+      .select('ingrediente_id, cantidad, unidad, ingredientes(nombre, stock_actual, costo_unitario)')
       .eq('producto_id', productoId);
 
     let costoTotal = 0;
     const faltantes = [];
     const descuentos = [];
+    const consumos = [];   // para la trazabilidad
 
     (receta || []).forEach(r => {
       const necesita = Number(r.cantidad) * cantidad;
       const ing = r.ingredientes || {};
       const disp = Number(ing.stock_actual) || 0;
-      costoTotal += necesita * (Number(ing.costo_unitario) || 0);
+      const costoLinea = necesita * (Number(ing.costo_unitario) || 0);
+      costoTotal += costoLinea;
       if (disp < necesita) faltantes.push({ nombre: ing.nombre, necesita, disponible: disp });
       descuentos.push({ id: r.ingrediente_id, nuevo: Math.max(0, disp - necesita) });
+      consumos.push({
+        ingrediente_id: r.ingrediente_id, nombre: ing.nombre || '',
+        cantidad: necesita, unidad: r.unidad || '', costo_linea: Math.round(costoLinea * 100) / 100
+      });
     });
 
     // Si faltan ingredientes y no se forzó, avisar sin producir
@@ -91,15 +97,31 @@ exports.handler = async (event) => {
     const nuevoStock = (Number(prod.stock) || 0) + cantidad;
     await supabase.from('productos').update({ stock: nuevoStock }).eq('id', productoId);
 
+    // Código de trazabilidad legible: L-AAAAMMDD-#### (correlativo del día)
+    const hoy = new Date();
+    const ymd = hoy.toISOString().slice(0, 10).replace(/-/g, '');
+    const { count } = await supabase.from('lotes_produccion')
+      .select('id', { count: 'exact', head: true })
+      .gte('fecha', hoy.toISOString().slice(0, 10));
+    const corr = String((count || 0) + 1).padStart(4, '0');
+    const codigoTraza = `L-${ymd}-${corr}`;
+
     // Registrar el lote
     const { data: lote } = await supabase.from('lotes_produccion').insert({
       producto_id: productoId, cantidad_producida: cantidad, costo_total: costoTotal,
-      ingredientes_ok: (receta || []).length > 0,
+      ingredientes_ok: (receta || []).length > 0, codigo_trazabilidad: codigoTraza,
       responsable: String(body.responsable || ''), notas: String(body.notas || '')
     }).select('id').maybeSingle();
 
+    // Guardar la trazabilidad de ingredientes consumidos
+    if (lote && lote.id && consumos.length) {
+      await supabase.from('lote_ingredientes').insert(
+        consumos.map(c => ({ ...c, lote_id: lote.id }))
+      );
+    }
+
     return ok({
-      success: true, loteId: lote && lote.id, producto: prod.nombre,
+      success: true, loteId: lote && lote.id, codigoTrazabilidad: codigoTraza, producto: prod.nombre,
       cantidad, nuevoStock, costoLote: costoTotal,
       ingredientesDescontados: descuentos.length,
       sinReceta: (receta || []).length === 0
