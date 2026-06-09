@@ -172,6 +172,7 @@ h1,h2,h3,.fred{font-family:'Fredoka',sans-serif}
       <button class="sb-item" data-sec="productos" onclick="App.ir('productos')"><span class="ic">🥐</span>Productos y Stock</button>
       <button class="sb-item" data-sec="ingredientes" onclick="App.ir('ingredientes')"><span class="ic">🧪</span>Ingredientes</button>
       <button class="sb-item" data-sec="produccion" onclick="App.ir('produccion')"><span class="ic">🏭</span>Producción</button>
+      <button class="sb-item" data-sec="planning" onclick="App.ir('planning')"><span class="ic">📅</span>Planning semanal</button>
     </div>
     <div class="sb-group">
       <div class="sb-label">Ventas</div>
@@ -232,6 +233,7 @@ h1,h2,h3,.fred{font-family:'Fredoka',sans-serif}
       <div class="seccion" id="sec-caja"><div id="caja-body"></div></div>
       <div class="seccion" id="sec-ingredientes"><div id="ing-body"></div></div>
       <div class="seccion" id="sec-produccion"><div id="prodc-body"></div></div>
+      <div class="seccion" id="sec-planning"><div id="plan-body"></div></div>
       <div class="seccion" id="sec-reportes"><div id="rep-body"></div></div>
       <div class="seccion" id="sec-usuarios"><div id="usr-body"></div></div>
     </div>
@@ -240,6 +242,15 @@ h1,h2,h3,.fred{font-family:'Fredoka',sans-serif}
   </div>
 </div>
 
+<div id="modal-bg" style="display:none;position:fixed;inset:0;background:rgba(26,26,34,.55);z-index:60;align-items:center;justify-content:center;padding:1rem" onclick="if(event.target===this)App.cerrarModal()">
+  <div style="background:#fff;border-radius:16px;max-width:520px;width:100%;max-height:85vh;overflow-y:auto;box-shadow:0 10px 40px rgba(0,0,0,.3)">
+    <div style="padding:1rem 1.3rem;border-bottom:1px solid #eee;display:flex;align-items:center">
+      <h2 id="modal-titulo" class="fred" style="color:var(--violeta-osc);font-size:1.15rem;margin:0"></h2>
+      <button onclick="App.cerrarModal()" style="margin-left:auto;background:none;border:none;font-size:1.5rem;cursor:pointer;color:#999;line-height:1">×</button>
+    </div>
+    <div id="modal-body" style="padding:1.3rem"></div>
+  </div>
+</div>
 <div id="toast" class="toast"></div>
 <script>
 const API = '/api';
@@ -251,7 +262,7 @@ const App = {
   token:'', seccion:'dashboard', filtro:'', pedidos:[], productos:[],
 
   rol:'', usuario:'',
-  ROLES:{ 'dueño':['dashboard','productos','ingredientes','produccion','pos','caja','reportes','pedidos','usuarios'], 'cajero':['pos','caja','pedidos'] },
+  ROLES:{ 'dueño':['dashboard','productos','ingredientes','produccion','planning','pos','caja','reportes','pedidos','usuarios'], 'cajero':['pos','caja','pedidos'] },
   async entrar(){
     const pin=document.getElementById('pin').value.trim();
     if(!pin){this.toast('Ingresá tu PIN','err');return;}
@@ -310,6 +321,7 @@ const App = {
     if(sec==='produccion')this.cargarProduccion();
     if(sec==='reportes')this.cargarReportes();
     if(sec==='usuarios')this.cargarUsuarios();
+    if(sec==='planning')this.cargarPlanning();
   },
   toggleMenu(){document.getElementById('sidebar').classList.toggle('abierto');},
 
@@ -745,13 +757,19 @@ const App = {
         </div></td>
         <td style="text-align:center">${i.bajo?'<span class="badge" style="background:#fde8e6;color:#b13a34">BAJO</span>':'<span style="color:#bbb">'+i.stockMinimo+'</span>'}</td>
         <td><input class="precio-input" id="ingc-${i.id}" value="${i.costo}" onchange="App.editarIng(${i.id})"></td>
-        <td><button class="btn btn-sm" style="background:#fde8e6;color:#b13a34" onclick="App.borrarIng(${i.id},'${i.nombre.replace(/'/g,"")}')">🗑</button></td>
+        <td style="white-space:nowrap">
+          <button class="btn btn-sm btn-violeta" onclick="App.comprarIng(${i.id},'${i.nombre.replace(/'/g,"")}')">🛒 Comprar</button>
+          <button class="btn btn-sm btn-ghost" onclick="App.historialIng(${i.id},'${i.nombre.replace(/'/g,"")}')">📈</button>
+          <button class="btn btn-sm" style="background:#fde8e6;color:#b13a34" onclick="App.borrarIng(${i.id},'${i.nombre.replace(/'/g,"")}')">🗑</button>
+        </td>
       </tr>`).join('');
     document.getElementById('ing-body').innerHTML=`
       <div class="panel">
         <div style="display:flex;align-items:center;margin-bottom:.8rem">
           <h2 style="margin:0">Ingredientes (${this.ingredientes.length})</h2>
-          <button class="btn btn-violeta" style="margin-left:auto" onclick="App.nuevoIngrediente()">+ Nuevo ingrediente</button>
+          <button class="btn btn-ghost" style="margin-left:auto" onclick="App.recuentoFisico()">📋 Recuento físico</button>
+          <button class="btn btn-ghost" onclick="App.recalcularCostos()">↻ Recalcular costos</button>
+          <button class="btn btn-violeta" onclick="App.nuevoIngrediente()">+ Nuevo ingrediente</button>
         </div>
         <div style="overflow-x:auto">
         <table class="tabla">
@@ -808,6 +826,13 @@ const App = {
   renderProduccion(){
     const opts=this.prodProductos.map(p=>`<option value="${p.id}">${p.nombre}</option>`).join('');
     document.getElementById('prodc-body').innerHTML=`
+      <div class="panel" id="panel-prediccion">
+        <div style="display:flex;align-items:center;flex-wrap:wrap;gap:.5rem;margin-bottom:.5rem">
+          <h2 style="margin:0">🔮 Qué conviene producir</h2>
+          <select id="pred-dia" onchange="App.cargarPrediccion()" style="margin-left:auto;padding:.4rem;border:1px solid #ddd;border-radius:8px;font-family:'Poppins'"></select>
+        </div>
+        <div id="pred-body"><div class="spin">…</div></div>
+      </div>
       <div class="panel">
         <h2>🏭 Producir un lote</h2>
         <p style="font-size:.85rem;color:#888;margin-bottom:.6rem">Elegí qué producto vas a producir. Si tiene receta, se descuenta la materia prima sola.</p>
@@ -817,6 +842,52 @@ const App = {
         <div id="prodc-detalle"></div>
       </div>
       <div class="panel" id="panel-lotes"><h2>Historial de lotes</h2><div id="lotes-body"><div class="spin">…</div></div></div>`;
+    this.initPrediccionDias();
+  },
+  initPrediccionDias(){
+    const dias=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+    const hoy=new Date().getDay();
+    const manana=(hoy+1)%7;
+    const sel=document.getElementById('pred-dia');
+    if(!sel)return;
+    sel.innerHTML=dias.map((d,i)=>`<option value="${i}" ${i===manana?'selected':''}>${d}${i===manana?' (mañana)':''}${i===hoy?' (hoy)':''}</option>`).join('');
+    this.cargarPrediccion();
+  },
+  async cargarPrediccion(){
+    const dia=document.getElementById('pred-dia').value;
+    const cont=document.getElementById('pred-body');
+    cont.innerHTML='<div class="spin">Calculando…</div>';
+    try{
+      const r=await fetch(API+'/prediccion?dia='+dia+'&token='+encodeURIComponent(this.token),{headers:this.headers()});
+      const d=await r.json();
+      if(!d.success)throw new Error(d.error||'Error');
+      if(!d.sugerencias.length){cont.innerHTML='<div style="color:#aaa;text-align:center;padding:1rem">Sin datos de ventas para ese día todavía. La predicción mejora a medida que se acumulan ventas.</div>';return;}
+      const muestra=d.muestras?`Basado en ${d.muestras} ${d.muestras===1?'día':'días'} de ese tipo en el historial.`:'Todavía sin historial de ese día — se muestran pedidos pendientes.';
+      const filas=d.sugerencias.map(s=>{
+        const alerta=(s.sugerido>0&&s.tieneReceta&&!s.materiaOk)?` <span title="Falta: ${s.faltan.join(', ')}" style="color:var(--err)">⚠️</span>`:'';
+        const btn=s.sugerido>0?`<button class="btn btn-sm btn-violeta" onclick="App.producirSugerido(${s.productoId},${s.sugerido})">Producir ${s.sugerido}</button>`:'<span style="color:var(--ok);font-size:.8rem">stock ok</span>';
+        return `<tr>
+          <td><b>${s.nombre}</b>${alerta}</td>
+          <td style="text-align:center" title="Demanda esperada del día">${s.demanda}</td>
+          <td style="text-align:center" title="Pedidos del portal pendientes">${s.pedidos||'—'}</td>
+          <td style="text-align:center;color:#888">${s.stock}</td>
+          <td style="text-align:center;font-weight:700;color:var(--violeta-vivo)">${s.sugerido}</td>
+          <td style="text-align:right">${btn}</td>
+        </tr>`;
+      }).join('');
+      cont.innerHTML=`
+        <p style="font-size:.8rem;color:#888;margin-bottom:.6rem">${muestra}</p>
+        <div style="overflow-x:auto"><table class="tabla">
+          <thead><tr><th>Producto</th><th style="text-align:center">Demanda</th><th style="text-align:center">Pedidos</th><th style="text-align:center">Stock</th><th style="text-align:center">Producir</th><th></th></tr></thead>
+          <tbody>${filas}</tbody>
+        </table></div>
+        <p style="font-size:.74rem;color:#aaa;margin-top:.6rem">Producir = demanda esperada + pedidos confirmados − stock actual. ⚠️ = puede faltar materia prima.</p>`;
+    }catch(e){cont.innerHTML='<div class="vacio">Error: '+e.message+'</div>';}
+  },
+  producirSugerido(productoId,cantidad){
+    document.getElementById('prodc-sel').value=productoId;
+    this.verReceta(productoId);
+    setTimeout(()=>{const c=document.getElementById('prodc-cant');if(c){c.value=cantidad;c.scrollIntoView({behavior:'smooth',block:'center'});}},400);
   },
   async verReceta(productoId){
     this.prodSel=productoId?parseInt(productoId,10):null;
@@ -913,14 +984,19 @@ const App = {
   
   // ---------- REPORTES ----------
   repDias:30,
+  margenMinimo:40,
   async cargarReportes(){
     const el=document.getElementById('rep-body');
     el.innerHTML='<div class="spin">Calculando…</div>';
     try{
-      const r=await fetch(API+'/reportes?dias='+this.repDias+'&token='+encodeURIComponent(this.token),{headers:this.headers()});
-      if(r.status===401){this.salir('Clave incorrecta');return;}
+      const [r,rc]=await Promise.all([
+        fetch(API+'/reportes?dias='+this.repDias+'&token='+encodeURIComponent(this.token),{headers:this.headers()}),
+        fetch(API+'/config?clave=margen_minimo_pct&token='+encodeURIComponent(this.token),{headers:this.headers()})
+      ]);
+      if(r.status===401){this.salir('Sesión inválida');return;}
       const d=await r.json();
       if(!d.success)throw new Error(d.error||'Error');
+      try{const cc=await rc.json();if(cc.valor)this.margenMinimo=Number(cc.valor)||40;}catch(e){}
       this.renderReportes(d);
     }catch(e){el.innerHTML='<div class="vacio">Error: '+e.message+'</div>';}
   },
@@ -949,10 +1025,13 @@ const App = {
     this.ultimoReporte=d;
     const pc=d.porCanal||{};
     const top=(d.topProductos||[]).map((p,i)=>`<tr><td style="color:#bbb;width:24px">${i+1}</td><td><b>${p.nombre}</b></td><td style="text-align:right">${p.cantidad} u</td><td style="text-align:right;color:var(--ok);font-weight:600">${this.money(p.total)}</td></tr>`).join('')||'<tr><td colspan="4" style="text-align:center;color:#aaa">Sin ventas en el período</td></tr>';
+    const bajoMargen=(d.margenes||[]).filter(m=>m.costo>0&&m.margenPct<this.margenMinimo);
     const marg=(d.margenes||[]).map(m=>{
       const col=m.margenPct>=50?'var(--ok)':(m.margenPct>=25?'var(--warn)':'var(--err)');
-      return `<tr><td><b>${m.nombre}</b></td><td style="text-align:right">${this.money(m.precio)}</td><td style="text-align:right;color:#999">${this.money(m.costo)}</td><td style="text-align:right;font-weight:600">${this.money(m.margen)}</td><td style="text-align:right;font-weight:600;color:${col}">${m.margenPct}%</td></tr>`;
+      const alerta=(m.costo>0&&m.margenPct<this.margenMinimo)?' ⚠️':'';
+      return `<tr><td><b>${m.nombre}</b>${alerta}</td><td style="text-align:right">${this.money(m.precio)}</td><td style="text-align:right;color:#999">${this.money(m.costo)}</td><td style="text-align:right;font-weight:600">${this.money(m.margen)}</td><td style="text-align:right;font-weight:600;color:${col}">${m.margenPct}%</td></tr>`;
     }).join('')||'<tr><td colspan="5" style="text-align:center;color:#aaa">Cargá costos en los productos para ver márgenes</td></tr>';
+    const avisoMargen=bajoMargen.length?`<div class="aviso" style="margin-bottom:1rem">⚠️ ${bajoMargen.length} producto(s) por debajo del margen mínimo (${this.margenMinimo}%): <b>${bajoMargen.map(m=>m.nombre).join(', ')}</b>. Conviene subir el precio o bajar el costo.</div>`:'';
     const inv=d.valorInventario||{};
     document.getElementById('rep-body').innerHTML=`
       <div class="bar">
@@ -980,6 +1059,7 @@ const App = {
         </div>
         <div class="panel">
           <h2>💰 Márgenes por producto</h2>
+          ${avisoMargen}
           <div style="overflow-x:auto"><table class="tabla">
             <thead><tr><th>Producto</th><th style="text-align:right">Precio</th><th style="text-align:right">Costo</th><th style="text-align:right">Margen</th><th style="text-align:right">%</th></tr></thead>
             <tbody>${marg}</tbody>
@@ -1117,6 +1197,195 @@ const App = {
     </body></html>`);
     w.document.close();
     this.toast('Abriendo PDF…','ok');
+  },
+
+  
+  // ---------- PUNTO 3: COMPRAS + COSTOS ----------
+  abrirModal(titulo,html){document.getElementById('modal-titulo').textContent=titulo;document.getElementById('modal-body').innerHTML=html;document.getElementById('modal-bg').style.display='flex';},
+  cerrarModal(){document.getElementById('modal-bg').style.display='none';},
+  comprarIng(id,nombre){
+    const ing=(this.ingredientes||[]).find(x=>x.id===id)||{};
+    this.abrirModal('Registrar compra · '+nombre,`
+      <p style="font-size:.85rem;color:#888;margin-bottom:.8rem">Suma stock, actualiza el costo al precio de esta compra y recalcula los productos que usan este ingrediente.</p>
+      <label style="font-size:.82rem;color:#666">Cantidad comprada (${ing.unidad||''})</label>
+      <input id="cmp-cant" type="number" step="any" style="width:100%;padding:.55rem;border:1px solid #ddd;border-radius:8px;font-family:'Fredoka';margin:.3rem 0 .7rem">
+      <label style="font-size:.82rem;color:#666">Costo por ${ing.unidad||'unidad'} ($)</label>
+      <input id="cmp-costo" type="number" step="any" value="${ing.costo||''}" style="width:100%;padding:.55rem;border:1px solid #ddd;border-radius:8px;font-family:'Fredoka';margin:.3rem 0 .7rem">
+      <label style="font-size:.82rem;color:#666">Proveedor (opcional)</label>
+      <input id="cmp-prov" style="width:100%;padding:.55rem;border:1px solid #ddd;border-radius:8px;margin:.3rem 0 1rem">
+      <button class="btn btn-violeta" style="width:100%" onclick="App.confirmarCompra(${id})">Registrar compra</button>`);
+  },
+  async confirmarCompra(id){
+    const cant=Number(document.getElementById('cmp-cant').value)||0;
+    const costo=Number(document.getElementById('cmp-costo').value)||0;
+    const prov=document.getElementById('cmp-prov').value.trim();
+    if(cant<=0){this.toast('Poné la cantidad','err');return;}
+    try{
+      const r=await fetch(API+'/registrar-compra',{method:'POST',headers:this.headers(),body:JSON.stringify({ingredienteId:id,cantidad:cant,costoUnitario:costo,proveedor:prov,token:this.token})});
+      const d=await r.json();
+      if(d.success){
+        this.cerrarModal();
+        this.toast('✓ Compra registrada · '+d.productosRecalculados+' productos recalculados','ok');
+        this.cargarIngredientes();
+      }else this.toast(d.error||'Error','err');
+    }catch(e){this.toast(e.message,'err');}
+  },
+  async historialIng(id,nombre){
+    this.abrirModal('Historial de precios · '+nombre,'<div class="spin">Cargando…</div>');
+    try{
+      const r=await fetch(API+'/registrar-compra?ingredienteId='+id+'&token='+encodeURIComponent(this.token),{headers:this.headers()});
+      const d=await r.json();
+      const compras=d.compras||[];
+      if(!compras.length){document.getElementById('modal-body').innerHTML='<div style="color:#aaa;text-align:center;padding:1rem">Todavía no registraste compras de este ingrediente.</div>';return;}
+      // variación de precio
+      const precios=compras.map(c=>c.costo);
+      const ultimo=precios[0], primero=precios[precios.length-1];
+      const varPct=primero?Math.round((ultimo-primero)/primero*100):0;
+      const filas=compras.map(c=>`<tr>
+        <td style="font-size:.8rem;color:#888">${c.fecha?new Date(c.fecha).toLocaleDateString('es-AR'):''}</td>
+        <td>${c.cantidad}</td>
+        <td style="font-weight:600">${this.money(c.costo)}</td>
+        <td style="color:#999">${c.proveedor||'—'}</td>
+      </tr>`).join('');
+      document.getElementById('modal-body').innerHTML=`
+        <div style="margin-bottom:.8rem;padding:.7rem 1rem;background:#f6f4ef;border-radius:10px">
+          <div style="font-size:.8rem;color:#888">Variación desde la primera compra</div>
+          <div class="fred" style="font-size:1.4rem;font-weight:600;color:${varPct>0?'var(--err)':'var(--ok)'}">${varPct>0?'+':''}${varPct}%</div>
+        </div>
+        <table class="tabla"><thead><tr><th>Fecha</th><th>Cant.</th><th>Costo/u</th><th>Proveedor</th></tr></thead><tbody>${filas}</tbody></table>`;
+    }catch(e){document.getElementById('modal-body').innerHTML='<div class="vacio">Error: '+e.message+'</div>';}
+  },
+  async recalcularCostos(){
+    if(!confirm('¿Recalcular el costo de todos los productos con receta, según el costo actual de sus ingredientes?'))return;
+    try{
+      const r=await fetch(API+'/recalcular-costos',{method:'POST',headers:this.headers(),body:JSON.stringify({token:this.token})});
+      const d=await r.json();
+      if(d.success){this.toast('✓ '+d.productosActualizados+' productos recalculados','ok');}
+      else this.toast(d.error||'Error','err');
+    }catch(e){this.toast(e.message,'err');}
+  },
+
+  
+  // ---------- PUNTO 2: RECUENTO FÍSICO (real vs teórico) ----------
+  recuentoFisico(){
+    const ings=this.ingredientes||[];
+    if(!ings.length){this.toast('No hay ingredientes cargados','err');return;}
+    const filas=ings.map(i=>`
+      <tr>
+        <td><b>${i.nombre}</b> <span style="color:#aaa;font-size:.78rem">(${i.unidad})</span></td>
+        <td style="text-align:right;color:#888">${i.stock}</td>
+        <td><input class="stock-input" id="rec-${i.id}" value="${i.stock}" data-sys="${i.stock}" style="width:80px"></td>
+      </tr>`).join('');
+    this.abrirModal('Recuento físico de stock',`
+      <p style="font-size:.85rem;color:#888;margin-bottom:.8rem">Cargá lo que <b>realmente</b> hay de cada ingrediente. El sistema lo compara con lo que cree tener y te muestra la merma. Al guardar, ajusta el stock al valor real.</p>
+      <input id="rec-resp" placeholder="Responsable del recuento (opcional)" style="width:100%;padding:.5rem;border:1px solid #ddd;border-radius:8px;margin-bottom:.8rem">
+      <div style="max-height:46vh;overflow-y:auto">
+        <table class="tabla"><thead><tr><th>Ingrediente</th><th style="text-align:right">Sistema</th><th>Real contado</th></tr></thead><tbody>${filas}</tbody></table>
+      </div>
+      <button class="btn btn-violeta" style="width:100%;margin-top:1rem" onclick="App.guardarRecuento()">Comparar y guardar recuento</button>`);
+  },
+  async guardarRecuento(){
+    const ings=this.ingredientes||[];
+    const items=ings.map(i=>{
+      const el=document.getElementById('rec-'+i.id);
+      return {ingredienteId:i.id, stockReal:Number(el.value)};
+    }).filter(x=>!isNaN(x.stockReal));
+    const resp=document.getElementById('rec-resp').value.trim();
+    if(!items.length){this.toast('Cargá al menos un valor','err');return;}
+    try{
+      const r=await fetch(API+'/recuento',{method:'POST',headers:this.headers(),body:JSON.stringify({items,responsable:resp,token:this.token})});
+      const d=await r.json();
+      if(d.success){this.mostrarResultadoRecuento(d);this.cargarIngredientes();}
+      else this.toast(d.error||'Error','err');
+    }catch(e){this.toast(e.message,'err');}
+  },
+  mostrarResultadoRecuento(d){
+    const conDif=(d.detalle||[]).filter(x=>x.diferencia!==0);
+    const filas=conDif.length?conDif.map(x=>{
+      const falta=x.diferencia<0;
+      return `<tr>
+        <td><b>${x.ingrediente}</b></td>
+        <td style="text-align:right">${x.sistema}</td>
+        <td style="text-align:right">${x.real}</td>
+        <td style="text-align:right;font-weight:600;color:${falta?'var(--err)':'var(--ok)'}">${x.diferencia>0?'+':''}${x.diferencia} ${x.unidad}</td>
+        <td style="text-align:right;font-weight:600;color:${falta?'var(--err)':'var(--ok)'}">${this.money(x.valorDiferencia)}</td>
+      </tr>`;
+    }).join(''):'<tr><td colspan="5" style="text-align:center;color:var(--ok);padding:1rem">✓ Sin diferencias. El stock real coincide con el sistema.</td></tr>';
+    this.abrirModal('Resultado del recuento',`
+      <div class="kpis" style="grid-template-columns:1fr 1fr;gap:.7rem;margin-bottom:1rem">
+        <div class="kpi"><div class="lbl">Ingredientes con diferencia</div><div class="val">${d.conDiferencia}</div><div class="sub">de ${d.contados} contados</div></div>
+        <div class="kpi ${d.mermaTotalValor<0?'':''}"><div class="lbl">Valor de la merma</div><div class="val" style="color:${d.mermaTotalValor<0?'var(--err)':'var(--ok)'}">${this.money(d.mermaTotalValor)}</div><div class="sub">faltante valorizado</div></div>
+      </div>
+      <div style="max-height:42vh;overflow-y:auto">
+        <table class="tabla"><thead><tr><th>Ingrediente</th><th style="text-align:right">Sistema</th><th style="text-align:right">Real</th><th style="text-align:right">Dif.</th><th style="text-align:right">Valor</th></tr></thead><tbody>${filas}</tbody></table>
+      </div>
+      <p style="font-size:.78rem;color:#aaa;margin-top:.8rem">El stock quedó ajustado a los valores reales. Una merma negativa repetida en el mismo insumo puede indicar desperdicio, error de receta o faltante a revisar.</p>`);
+  },
+
+  
+  // ---------- PUNTO 4: PLANNING SEMANAL ----------
+  planFilas:[],
+  async cargarPlanning(){
+    const el=document.getElementById('plan-body');
+    el.innerHTML='<div class="spin">Armando el plan…</div>';
+    try{
+      const r=await fetch(API+'/planning?token='+encodeURIComponent(this.token),{headers:this.headers()});
+      if(r.status===401){this.salir('Sesión inválida');return;}
+      const d=await r.json();
+      if(!d.success)throw new Error(d.error||'Error');
+      this.planFilas=d.filas||[];
+      this.renderPlanning(d.muestras||[]);
+    }catch(e){el.innerHTML='<div class="vacio">Error: '+e.message+'</div>';}
+  },
+  renderPlanning(muestras){
+    const dias=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+    const hoy=new Date().getDay();
+    if(!this.planFilas.length){document.getElementById('plan-body').innerHTML='<div class="vacio">Todavía no hay suficiente historial de ventas para armar el plan. Se va completando a medida que vendés.</div>';return;}
+    // Totales por día
+    const totalDia=[0,0,0,0,0,0,0];
+    this.planFilas.forEach(f=>f.porDia.forEach((v,i)=>totalDia[i]+=v));
+    const head=dias.map((dn,i)=>`<th style="text-align:center;${i===hoy?'color:var(--violeta-vivo)':''}">${dn}${i===hoy?' •':''}<div style="font-size:.62rem;font-weight:400;color:#bbb">${muestras[i]||0} sem.</div></th>`).join('');
+    const filas=this.planFilas.map((f,fi)=>{
+      const celdas=f.porDia.map((v,di)=>`<td style="text-align:center;padding:.3rem"><input class="plan-cell" id="plan-${fi}-${di}" value="${v}" style="width:52px;text-align:center;border:1px solid ${v>0?'#e0dcf3':'#f0ede7'};border-radius:6px;padding:.25rem;font-family:'Fredoka';${v===0?'color:#ccc':''}"></td>`).join('');
+      return `<tr><td style="white-space:nowrap"><b>${f.nombre}</b><div style="font-size:.7rem;color:#aaa">stock: ${f.stock}</div></td>${celdas}</tr>`;
+    }).join('');
+    const botonesDia=dias.map((dn,i)=>`<td style="text-align:center;padding:.4rem"><button class="btn btn-sm btn-violeta" onclick="App.producirDia(${i})">Producir ${dn}</button></td>`).join('');
+    document.getElementById('plan-body').innerHTML=`
+      <div class="panel">
+        <h2>📅 Plan de producción semanal</h2>
+        <p style="font-size:.85rem;color:#888;margin-bottom:.8rem">Demanda esperada por día (promedio histórico). Ajustá las cantidades si querés y generá los lotes de un día con un clic. El día de hoy está marcado con •.</p>
+        <div style="overflow-x:auto">
+        <table class="tabla" style="min-width:680px">
+          <thead><tr><th>Producto</th>${head}</tr></thead>
+          <tbody>${filas}</tbody>
+          <tfoot>
+            <tr style="border-top:2px solid #eee"><td style="font-weight:600;color:var(--violeta-osc)">Total del día</td>${totalDia.map(v=>`<td style="text-align:center;font-weight:600;color:var(--violeta-vivo)">${v}</td>`).join('')}</tr>
+            <tr>${'<td></td>'}${botonesDia}</tr>
+          </tfoot>
+        </table></div>
+        <p style="font-size:.74rem;color:#aaa;margin-top:.8rem">"Producir [día]" genera un lote por cada producto con cantidad mayor a cero de esa columna, descontando la materia prima de cada receta.</p>
+      </div>`;
+  },
+  async producirDia(diaIdx){
+    const dias=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+    // Recolectar productos con cantidad > 0 en esa columna
+    const aProducir=[];
+    this.planFilas.forEach((f,fi)=>{
+      const el=document.getElementById('plan-'+fi+'-'+diaIdx);
+      const cant=el?Number(el.value)||0:0;
+      if(cant>0)aProducir.push({productoId:f.productoId,nombre:f.nombre,cantidad:cant});
+    });
+    if(!aProducir.length){this.toast('No hay nada que producir ese día','err');return;}
+    if(!confirm('¿Generar '+aProducir.length+' lote(s) para el '+dias[diaIdx]+'?\n\n'+aProducir.map(x=>'• '+x.cantidad+' '+x.nombre).join('\n')))return;
+    let ok=0, err=0;
+    for(const it of aProducir){
+      try{
+        const r=await fetch(API+'/producir',{method:'POST',headers:this.headers(),body:JSON.stringify({productoId:it.productoId,cantidad:it.cantidad,responsable:this.usuario,notas:'Plan '+dias[diaIdx],forzar:true,token:this.token})});
+        const d=await r.json();
+        if(d.success)ok++;else err++;
+      }catch(e){err++;}
+    }
+    this.toast('✓ '+ok+' lotes generados'+(err?' · '+err+' con error':''),err?'err':'ok');
   },
 
     toast(msg,tipo){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show '+(tipo||'');setTimeout(()=>{t.className='toast';},2400);}
