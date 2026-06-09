@@ -13,7 +13,7 @@ exports.handler = async (event) => {
   try {
     const { data, error } = await supabase
       .from('productos')
-      .select('id, sku, nombre, descripcion, precio_minorista, precio_mayorista, unidad_bulto, cantidad_minima_bulto, stock')
+      .select('id, sku, nombre, descripcion, imagen, precio_minorista, precio_mayorista, unidad_bulto, cantidad_minima_bulto, stock')
       .eq('activo', true)
       .order('nombre', { ascending: true });
 
@@ -25,6 +25,7 @@ exports.handler = async (event) => {
       sku: p.sku,
       nombre: p.nombre,
       descripcion: p.descripcion || '',
+      imagen: p.imagen || '',
       precio: canal === 'mayorista' ? Number(p.precio_mayorista) : Number(p.precio_minorista),
       stock: p.stock || 0,
       // Reglas mayoristas (el portal minorista las ignora):
