@@ -72,6 +72,35 @@ exports.handler = async (event) => {
       })
       .sort((a, b) => b.margenPct - a.margenPct);
 
+    // Consumo de ingredientes (ventas × recetas del período)
+    // 1) cantidad vendida por producto (nombre → cantidad) ya la tenemos en prodVendidos,
+    //    pero necesitamos por producto_id para cruzar con recetas. Recalculamos por id.
+    const cantPorProducto = {};
+    (pedidos || []).forEach(p => {
+      (p.detalle_pedidos || []).forEach(d => {
+        // el detalle guarda nombre; cruzamos por nombre con productos abajo
+        const n = d.nombre || '';
+        cantPorProducto[n] = (cantPorProducto[n] || 0) + (Number(d.cantidad) || 0);
+      });
+    });
+    // Traer recetas con nombres de producto e ingrediente
+    const { data: recetasAll } = await supabase
+      .from('recetas')
+      .select('cantidad, productos(nombre), ingredientes(nombre, unidad)');
+    const consumo = {}; // ingrediente -> {cantidad, unidad}
+    (recetasAll || []).forEach(r => {
+      const prodNom = r.productos ? r.productos.nombre : '';
+      const vendidas = cantPorProducto[prodNom] || 0;
+      if (!vendidas) return;
+      const ing = r.ingredientes ? r.ingredientes.nombre : '';
+      const uni = r.ingredientes ? r.ingredientes.unidad : '';
+      if (!consumo[ing]) consumo[ing] = { cantidad: 0, unidad: uni };
+      consumo[ing].cantidad += Number(r.cantidad) * vendidas;
+    });
+    const consumoIngredientes = Object.entries(consumo)
+      .map(([nombre, v]) => ({ nombre, cantidad: Math.round(v.cantidad * 100) / 100, unidad: v.unidad }))
+      .sort((a, b) => b.cantidad - a.cantidad).slice(0, 15);
+
     // Valor de inventario
     let valProductos = 0;
     (productos || []).forEach(p => { valProductos += (Number(p.stock) || 0) * (Number(p.costo_unitario) || 0); });
@@ -83,6 +112,7 @@ exports.handler = async (event) => {
       success: true, dias,
       totalPeriodo: Math.round(totalPeriodo),
       ventasPorDia, porCanal, topProductos, margenes,
+      consumoIngredientes,
       valorInventario: { productos: Math.round(valProductos), ingredientes: Math.round(valIngredientes), total: Math.round(valProductos + valIngredientes) }
     });
   } catch (err) {
