@@ -104,3 +104,18 @@
   from = "/api/reportes"
   to = "/.netlify/functions/reportes"
   status = 200
+
+[[redirects]]
+  from = "/api/login"
+  to = "/.netlify/functions/login"
+  status = 200
+
+[[redirects]]
+  from = "/api/usuarios"
+  to = "/.netlify/functions/usuarios"
+  status = 200
+
+[[redirects]]
+  from = "/api/config"
+  to = "/.netlify/functions/config"
+  status = 200
