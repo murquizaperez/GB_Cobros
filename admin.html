@@ -184,6 +184,7 @@ h1,h2,h3,.fred{font-family:'Fredoka',sans-serif}
       <div class="sb-label">Pedidos</div>
       <button class="sb-item" data-sec="pedidos" onclick="App.ir('pedidos')"><span class="ic">📋</span>Pedidos online</button>
       <button class="sb-item" data-sec="mayorista" onclick="App.ir('mayorista')"><span class="ic">🏢</span>Mayorista</button>
+      <button class="sb-item" data-sec="promos" onclick="App.ir('promos')"><span class="ic">🎉</span>Promociones</button>
     </div>
     <div class="sb-group" data-rol="dueño">
       <div class="sb-label">Sistema</div>
@@ -236,6 +237,7 @@ h1,h2,h3,.fred{font-family:'Fredoka',sans-serif}
       <div class="seccion" id="sec-produccion"><div id="prodc-body"></div></div>
       <div class="seccion" id="sec-planning"><div id="plan-body"></div></div>
       <div class="seccion" id="sec-mayorista"><div id="may-body"></div></div>
+      <div class="seccion" id="sec-promos"><div id="promos-body"></div></div>
       <div class="seccion" id="sec-reportes"><div id="rep-body"></div></div>
       <div class="seccion" id="sec-usuarios"><div id="usr-body"></div></div>
     </div>
@@ -264,7 +266,7 @@ const App = {
   token:'', seccion:'dashboard', filtro:'', pedidos:[], productos:[],
 
   rol:'', usuario:'',
-  ROLES:{ 'dueño':['dashboard','productos','ingredientes','produccion','planning','pos','caja','reportes','pedidos','mayorista','usuarios'], 'cajero':['pos','caja','pedidos'] },
+  ROLES:{ 'dueño':['dashboard','productos','ingredientes','produccion','planning','pos','caja','reportes','pedidos','mayorista','promos','usuarios'], 'cajero':['pos','caja','pedidos'] },
   async entrar(){
     const pin=document.getElementById('pin').value.trim();
     if(!pin){this.toast('Ingresá tu PIN','err');return;}
@@ -325,6 +327,7 @@ const App = {
     if(sec==='usuarios')this.cargarUsuarios();
     if(sec==='planning')this.cargarPlanning();
     if(sec==='mayorista')this.cargarMayoristas();
+    if(sec==='promos')this.cargarPromos();
   },
   toggleMenu(){document.getElementById('sidebar').classList.toggle('abierto');},
 
@@ -1543,6 +1546,90 @@ const App = {
     const precios=[...document.querySelectorAll('.mayprecio')].map(el=>({productoId:Number(el.dataset.pid),precio:Number(el.value)||0}));
     try{const r=await fetch(API+'/mayoristas',{method:'POST',headers:this.headers(),body:JSON.stringify({accion:'precios',id,precios,token:this.token})});
       const d=await r.json();if(d.success){this.cerrarModal();this.toast('✓ Lista de precios guardada','ok');}else this.toast(d.error,'err');}catch(e){this.toast(e.message,'err');}
+  },
+
+  
+  // ---------- PROMOCIONES ----------
+  promos:[],
+  async cargarPromos(){
+    const el=document.getElementById('promos-body');
+    el.innerHTML='<div class="spin">Cargando…</div>';
+    try{
+      const [rp,rpr]=await Promise.all([
+        fetch(API+'/promociones?token='+encodeURIComponent(this.token),{headers:this.headers()}),
+        fetch(API+'/listar-productos?token='+encodeURIComponent(this.token),{headers:this.headers()})
+      ]);
+      if(rp.status===401){this.salir('Sesión inválida');return;}
+      const d=await rp.json();
+      try{const dp=await rpr.json();this.promoProductos=(dp.productos||[]).filter(p=>p.activo);}catch(e){this.promoProductos=[];}
+      if(!d.success)throw new Error(d.error||'Error');
+      this.promos=d.promociones||[];
+      const tipoLabel={descuento:'% descuento',precio:'Precio fijo',destacado:'Destacado'};
+      const filas=this.promos.map(p=>{
+        const horario=(p.hora_desde!=null||p.hora_hasta!=null)?` · ${p.hora_desde??0}–${p.hora_hasta??24}h`:'';
+        const valor=p.tipo==='descuento'?`${p.valor}%`:(p.tipo==='precio'?this.money(p.valor):'—');
+        return `<tr>
+          <td><b>${p.titulo}</b><div style="font-size:.75rem;color:#aaa">${p.descripcion||''}</div></td>
+          <td>${p.producto||'Toda la tienda'}</td>
+          <td>${tipoLabel[p.tipo]||p.tipo} ${valor!=='—'?'· '+valor:''}${horario}</td>
+          <td><button class="toggle ${p.activa?'on':'off'}" onclick="App.togglePromo(${p.id},${!p.activa})">${p.activa?'Activa':'Pausada'}</button></td>
+          <td style="text-align:right"><button class="btn btn-sm" style="background:#fde8e6;color:#b13a34" onclick="App.borrarPromo(${p.id})">🗑</button></td>
+        </tr>`;
+      }).join('');
+      el.innerHTML=`
+        <div class="panel">
+          <div style="display:flex;align-items:center;margin-bottom:.8rem">
+            <h2 style="margin:0">Promociones (${this.promos.length})</h2>
+            <button class="btn btn-violeta" style="margin-left:auto" onclick="App.nuevaPromo()">+ Nueva promo</button>
+          </div>
+          <table class="tabla"><thead><tr><th>Promo</th><th>Aplica a</th><th>Tipo</th><th>Estado</th><th></th></tr></thead><tbody>${filas||'<tr><td colspan="5" style="text-align:center;color:#aaa;padding:1rem">Sin promociones. Creá la primera.</td></tr>'}</tbody></table>
+          <p style="font-size:.8rem;color:#888;margin-top:.8rem">Las promos activas y vigentes aparecen solas en la tienda del cliente. Podés limitarlas por franja horaria (ej: descuento de pan después de las 18h).</p>
+        </div>`;
+    }catch(e){el.innerHTML='<div class="vacio">Error: '+e.message+'</div>';}
+  },
+  nuevaPromo(){
+    const opts='<option value="">Toda la tienda</option>'+(this.promoProductos||[]).map(p=>`<option value="${p.id}">${p.nombre}</option>`).join('');
+    this.abrirModal('Nueva promoción',`
+      <label style="font-size:.82rem;color:#666">Título</label>
+      <input id="pr-tit" placeholder="Ej: 3x2 en medialunas" style="width:100%;padding:.55rem;border:1px solid #ddd;border-radius:8px;margin:.3rem 0 .7rem">
+      <label style="font-size:.82rem;color:#666">Descripción (opcional)</label>
+      <input id="pr-desc" placeholder="Ej: Llevá 3 y pagá 2" style="width:100%;padding:.55rem;border:1px solid #ddd;border-radius:8px;margin:.3rem 0 .7rem">
+      <label style="font-size:.82rem;color:#666">Aplica a</label>
+      <select id="pr-prod" style="width:100%;padding:.55rem;border:1px solid #ddd;border-radius:8px;margin:.3rem 0 .7rem">${opts}</select>
+      <label style="font-size:.82rem;color:#666">Tipo</label>
+      <select id="pr-tipo" onchange="document.getElementById('pr-valwrap').style.display=this.value==='destacado'?'none':'block'" style="width:100%;padding:.55rem;border:1px solid #ddd;border-radius:8px;margin:.3rem 0 .7rem">
+        <option value="destacado">Solo destacar (aviso)</option>
+        <option value="descuento">% de descuento</option>
+        <option value="precio">Precio fijo promocional</option>
+      </select>
+      <div id="pr-valwrap" style="display:none">
+        <label style="font-size:.82rem;color:#666">Valor (% o $)</label>
+        <input id="pr-val" type="number" step="any" style="width:100%;padding:.55rem;border:1px solid #ddd;border-radius:8px;margin:.3rem 0 .7rem">
+      </div>
+      <div style="display:flex;gap:.6rem">
+        <div style="flex:1"><label style="font-size:.82rem;color:#666">Desde hora (opc)</label><input id="pr-hd" type="number" min="0" max="23" placeholder="0" style="width:100%;padding:.55rem;border:1px solid #ddd;border-radius:8px;margin:.3rem 0"></div>
+        <div style="flex:1"><label style="font-size:.82rem;color:#666">Hasta hora (opc)</label><input id="pr-hh" type="number" min="0" max="24" placeholder="24" style="width:100%;padding:.55rem;border:1px solid #ddd;border-radius:8px;margin:.3rem 0"></div>
+      </div>
+      <button class="btn btn-violeta" style="width:100%;margin-top:.8rem" onclick="App.guardarPromo()">Crear promoción</button>`);
+  },
+  async guardarPromo(){
+    const tit=document.getElementById('pr-tit').value.trim();
+    if(!tit){this.toast('Poné un título','err');return;}
+    const payload={accion:'crear',titulo:tit,descripcion:document.getElementById('pr-desc').value.trim(),
+      productoId:document.getElementById('pr-prod').value||null,tipo:document.getElementById('pr-tipo').value,
+      valor:Number(document.getElementById('pr-val').value)||0,
+      horaDesde:document.getElementById('pr-hd').value,horaHasta:document.getElementById('pr-hh').value,token:this.token};
+    try{const r=await fetch(API+'/promociones',{method:'POST',headers:this.headers(),body:JSON.stringify(payload)});
+      const d=await r.json();if(d.success){this.cerrarModal();this.toast('Promo creada','ok');this.cargarPromos();}else this.toast(d.error,'err');}catch(e){this.toast(e.message,'err');}
+  },
+  async togglePromo(id,activa){
+    try{const r=await fetch(API+'/promociones',{method:'POST',headers:this.headers(),body:JSON.stringify({accion:'toggle',id,activa,token:this.token})});
+      const d=await r.json();if(d.success)this.cargarPromos();else this.toast(d.error,'err');}catch(e){this.toast(e.message,'err');}
+  },
+  async borrarPromo(id){
+    if(!confirm('¿Borrar esta promoción?'))return;
+    try{const r=await fetch(API+'/promociones',{method:'POST',headers:this.headers(),body:JSON.stringify({accion:'borrar',id,token:this.token})});
+      const d=await r.json();if(d.success){this.toast('Borrada','ok');this.cargarPromos();}else this.toast(d.error,'err');}catch(e){this.toast(e.message,'err');}
   },
 
     toast(msg,tipo){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show '+(tipo||'');setTimeout(()=>{t.className='toast';},2400);}
