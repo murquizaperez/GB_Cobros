@@ -189,3 +189,13 @@
   from = "/api/indicadores-facturacion"
   to = "/.netlify/functions/indicadores-facturacion"
   status = 200
+
+[[redirects]]
+  from = "/api/subir-archivo"
+  to = "/.netlify/functions/subir-archivo"
+  status = 200
+
+[[redirects]]
+  from = "/api/documentos"
+  to = "/.netlify/functions/documentos"
+  status = 200
