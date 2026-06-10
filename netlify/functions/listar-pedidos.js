@@ -27,7 +27,7 @@ exports.handler = async (event) => {
   try {
     let q = supabase
       .from('pedidos')
-      .select('id, canal, fecha_pedido, fecha_entrega, estado, total, medio_pago, estado_pago, quiere_factura, notas, direccion, cliente_id, clientes(nombre, telefono, email), detalle_pedidos(nombre, cantidad, subtotal), facturas(afip_numero, cae, qr_url, error)')
+      .select('id, canal, fecha_pedido, fecha_entrega, estado, total, medio_pago, estado_pago, quiere_factura, notas, direccion, comprobante_url, cliente_id, clientes(nombre, telefono, email), detalle_pedidos(nombre, cantidad, subtotal), facturas(afip_numero, cae, qr_url, error)')
       .order('fecha_pedido', { ascending: false })
       .limit(limit);
 
@@ -49,6 +49,7 @@ exports.handler = async (event) => {
         quiereFactura: p.quiere_factura,
         notas: p.notas,
         direccion: p.direccion,
+        comprobanteUrl: p.comprobante_url || '',
         total: Number(p.total),
         cliente: p.clientes ? { nombre: p.clientes.nombre, telefono: p.clientes.telefono, email: p.clientes.email } : null,
         items: (p.detalle_pedidos || []).map(d => ({ nombre: d.nombre, cantidad: d.cantidad, subtotal: Number(d.subtotal) })),
