@@ -4,6 +4,8 @@
 <title>Monnoserie · Sistema de gestión</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
 <style>
 :root{
   --violeta:#5453A3; --violeta-vivo:#6346BA; --violeta-osc:#3F3E7A;
@@ -15,6 +17,12 @@
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Poppins',system-ui,sans-serif;font-weight:300;background:var(--crema);color:var(--tinta)}
 h1,h2,h3,.fred{font-family:'Fredoka',sans-serif}
+/* === Tipografía: SOLO los títulos en negrita; números y texto finos === */
+body,p,span,div,td,th,li,a,label,input,select,button,b,strong,
+.val,.total,.prc,.stk,.tel,.cli,.pid,.meta,.badge,.sub,.lbl,
+.stock-input,.precio-input,.toggle,.filtro,.pos-total,.pcard .prc,
+.kpi .val,.kpi .lbl,.money{font-weight:300!important}
+h1,h2,h3,h4,.fred,.sec-tit,.sb-head .t{font-weight:600!important}
 
 /* LOGIN */
 .login{max-width:360px;margin:8vh auto;background:#fff;padding:2rem;border-radius:18px;box-shadow:0 8px 30px rgba(63,62,122,.15);text-align:center}
@@ -186,6 +194,7 @@ h1,h2,h3,.fred{font-family:'Fredoka',sans-serif}
       <button class="sb-item" data-sec="mayorista" onclick="App.ir('mayorista')"><span class="ic">🏢</span>Mayorista</button>
       <button class="sb-item" data-sec="promos" onclick="App.ir('promos')"><span class="ic">🎉</span>Promociones</button>
       <button class="sb-item" data-sec="cuentacorriente" onclick="App.ir('cuentacorriente')"><span class="ic">💳</span>Cuenta corriente</button>
+      <button class="sb-item" data-sec="documentos" onclick="App.ir('documentos')"><span class="ic">📑</span>Documentos</button>
     </div>
     <div class="sb-group" data-rol="dueño">
       <div class="sb-label">Sistema</div>
@@ -240,6 +249,7 @@ h1,h2,h3,.fred{font-family:'Fredoka',sans-serif}
       <div class="seccion" id="sec-mayorista"><div id="may-body"></div></div>
       <div class="seccion" id="sec-promos"><div id="promos-body"></div></div>
       <div class="seccion" id="sec-cuentacorriente"><div id="cc-body"></div></div>
+      <div class="seccion" id="sec-documentos"><div id="doc-body"></div></div>
       <div class="seccion" id="sec-reportes"><div id="rep-body"></div></div>
       <div class="seccion" id="sec-usuarios"><div id="usr-body"></div></div>
     </div>
@@ -268,7 +278,7 @@ const App = {
   token:'', seccion:'dashboard', filtro:'', pedidos:[], productos:[],
 
   rol:'', usuario:'',
-  ROLES:{ 'dueño':['dashboard','productos','ingredientes','produccion','planning','pos','caja','reportes','pedidos','mayorista','promos','cuentacorriente','usuarios'], 'cajero':['pos','caja','pedidos'] },
+  ROLES:{ 'dueño':['dashboard','productos','ingredientes','produccion','planning','pos','caja','reportes','pedidos','mayorista','promos','cuentacorriente','documentos','usuarios'], 'cajero':['pos','caja','pedidos'] },
   async entrar(){
     const pin=document.getElementById('pin').value.trim();
     if(!pin){this.toast('Ingresá tu PIN','err');return;}
@@ -331,6 +341,7 @@ const App = {
     if(sec==='mayorista')this.cargarMayoristas();
     if(sec==='promos')this.cargarPromos();
     if(sec==='cuentacorriente')this.cargarCuentaCorriente();
+    if(sec==='documentos')this.cargarDocumentos();
   },
   toggleMenu(){document.getElementById('sidebar').classList.toggle('abierto');},
 
@@ -388,7 +399,11 @@ const App = {
   renderProductos(){
     const filas=this.productos.map(p=>`
       <tr>
-        <td><b>${p.nombre}</b><div style="font-size:.72rem;color:#aaa">${p.sku}</div></td>
+        <td><div style="display:flex;align-items:center;gap:.6rem">
+          <div onclick="document.getElementById('foto-${p.id}').click()" title="Subir foto" style="width:42px;height:42px;border-radius:8px;background:#ece8df ${p.imagen?`center/cover url('${p.imagen}')`:''};display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;font-size:1.1rem">${p.imagen?'':'📷'}</div>
+          <input type="file" id="foto-${p.id}" accept="image/*" style="display:none" onchange="App.subirFotoProd(${p.id},this)">
+          <div><b>${p.nombre}</b><div style="font-size:.72rem;color:#aaa">${p.sku}</div></div>
+        </div></td>
         <td><div class="stock-pill">
           <button class="btn btn-sm btn-ghost" onclick="App.ajustarStock(${p.id},-1)">−</button>
           <input class="stock-input" id="stk-${p.id}" value="${p.stock}" onchange="App.setStock(${p.id},this.value)">
@@ -409,8 +424,22 @@ const App = {
           <thead><tr><th>Producto</th><th>Stock</th><th>P. Minorista</th><th>P. Mayorista</th><th>Portal</th></tr></thead>
           <tbody>${filas}</tbody>
         </table></div>
-        <p style="font-size:.76rem;color:#aaa;margin-top:.8rem">El stock y los precios se guardan al cambiarlos. "Visible" controla si aparece en el portal del cliente.</p>
+        <p style="font-size:.76rem;color:#aaa;margin-top:.8rem">Tocá la 📷 para subir la foto del producto (aparece en el portal). El stock y los precios se guardan al cambiarlos.</p>
       </div>`;
+  },
+  async subirFotoProd(id,input){
+    const f=input.files[0]; if(!f)return;
+    this.toast('Subiendo foto…','ok');
+    try{
+      const b64=await this.fileABase64(f);
+      const r=await fetch(API+'/subir-archivo',{method:'POST',headers:this.headers(),body:JSON.stringify({carpeta:'productos',nombre:'prod'+id,contenidoBase64:b64,tipo:f.type,token:this.token})});
+      const d=await r.json();
+      if(!d.success){this.toast('Error: '+(d.error||'no se pudo'),'err');return;}
+      const r2=await fetch(API+'/gestionar-producto',{method:'POST',headers:this.headers(),body:JSON.stringify({accion:'editar',id,imagen:d.url,token:this.token})});
+      const d2=await r2.json();
+      if(d2.success){this.toast('✓ Foto actualizada','ok');this.cargarProductos();}
+      else this.toast('Error al guardar la foto','err');
+    }catch(e){this.toast('Error: '+e.message,'err');}
   },
   async ajustarStock(id,delta){
     try{
@@ -510,9 +539,24 @@ const App = {
       else{this.toast(d.error||'Error','err');btn.disabled=false;}
     }catch(e){this.toast(e.message,'err');btn.disabled=false;}
   },
+  ordenPed:'cliente',
+  nombreCli(p){
+    if(p.cliente&&p.cliente.nombre)return p.cliente.nombre;
+    const m=(p.notas||'').match(/Mayorista[^:]*:\s*([^(]+)/i);
+    if(m)return m[1].trim();
+    return '(sin cliente)';
+  },
+  setOrdenPed(o){this.ordenPed=o;this.renderPedidos();},
   renderPedidos(){
     if(!this.pedidos.length){document.getElementById('ped-body').innerHTML='<div class="vacio">No hay pedidos 🐵</div>';return;}
-    document.getElementById('ped-body').innerHTML=this.pedidos.map(p=>{
+    let lista=[...this.pedidos];
+    let agrupar=this.ordenPed==='cliente';
+    if(agrupar) lista.sort((a,b)=>this.nombreCli(a).localeCompare(this.nombreCli(b))||b.id-a.id);
+    const ctrl=`<div class="bar" style="margin-bottom:1rem;font-size:.85rem;color:#888;align-items:center">Ordenar:
+      <button class="filtro ${this.ordenPed==='cliente'?'activo':''}" onclick="App.setOrdenPed('cliente')">Por cliente</button>
+      <button class="filtro ${this.ordenPed==='fecha'?'activo':''}" onclick="App.setOrdenPed('fecha')">Por fecha</button></div>`;
+    let ultimoCli='';
+    const cards=lista.map(p=>{
       const items=(p.items||[]).map(i=>`<b>${i.cantidad}×</b> ${i.nombre}`).join(' · ')||'—';
       const pagoBadge=p.estadoPago==='pagado'?'<span class="badge pago-ok">pagado</span>':'<span class="badge pago-pend">pago pendiente</span>';
       const sig=SIGUIENTE[p.estado];
@@ -520,11 +564,13 @@ const App = {
       if(p.factura&&p.factura.cae)factura=`<div class="factura okf">🧾 Factura ${p.factura.numero} · CAE ${p.factura.cae}</div>`;
       else if(p.factura&&p.factura.error)factura=`<div class="factura errf">⚠️ Factura no emitida: ${p.factura.error}</div>`;
       else if(p.quiereFactura)factura=`<div class="factura">🧾 Pidió factura (se emite al confirmar el pago)</div>`;
-      return `<div class="card">
+      let header='';
+      if(agrupar){const cn=this.nombreCli(p);if(cn!==ultimoCli){ultimoCli=cn;header=`<div style="margin:1.2rem 0 .5rem;font-family:'Fredoka';font-weight:600;color:var(--violeta-osc);font-size:1.05rem;border-bottom:2px solid #ece8df;padding-bottom:.3rem">👤 ${cn}</div>`;}}
+      return header+`<div class="card">
         <div class="card-top">
           <div>
             <div class="pid">Pedido #${p.id}</div>
-            <div class="cli">${p.cliente?p.cliente.nombre:'(sin cliente)'}</div>
+            <div class="cli">${this.nombreCli(p)}</div>
             <div class="tel">${p.cliente&&p.cliente.telefono?'📱 '+p.cliente.telefono:''}</div>
             <div style="margin-top:.4rem">
               <span class="badge b-${p.estado}">${LABEL_ESTADO[p.estado]||p.estado}</span> ${pagoBadge}
@@ -537,13 +583,17 @@ const App = {
         <div class="items">${items}</div>
         ${p.notas?`<div class="meta">📝 ${p.notas}</div>`:''}
         ${factura}
+        ${p.estadoPago==='pagado'&&p.comprobanteUrl?`<div class="meta">📎 <a href="${p.comprobanteUrl}" target="_blank" style="color:var(--violeta-vivo)">Ver comprobante de pago</a></div>`:''}
         <div class="acciones">
-          ${p.estadoPago!=='pagado'?`<button class="btn btn-pago" onclick="App.confirmarPago(${p.id},this)">💵 Confirmar pago</button>`:''}
+          ${p.estadoPago!=='pagado'?(p.canal==='minorista'
+            ? `<span style="font-size:.85rem;color:#b9892f;background:#fdf3e0;padding:.5rem .8rem;border-radius:8px">⏳ Esperando pago por Mercado Pago</span>`
+            : `<button class="btn btn-pago" onclick="App.confirmarPago(${p.id},this)">💵 Registrar pago recibido</button>`):''}
           ${sig?`<button class="btn btn-estado" onclick="App.avanzar(${p.id},'${sig}',this)">→ Marcar ${LABEL_ESTADO[sig]}</button>`:''}
           ${this.botonesWa(p)}
         </div>
       </div>`;
     }).join('');
+    document.getElementById('ped-body').innerHTML=ctrl+cards;
   },
 
 
@@ -1458,6 +1508,32 @@ const App = {
       if(lluvia.length&&seco.length){
         insight=difPct<-5?`Los días de lluvia vendés ~${Math.abs(difPct)}% menos que los secos.`:(difPct>5?`Curiosamente, los días de lluvia vendés ~${difPct}% más.`:'La lluvia no parece afectar mucho tus ventas.');
       }
+      // ---- Sugerencia accionable: pronóstico de mañana vs correlación ----
+      const promGeneral=prom(cruce);
+      let sugerencia='';
+      try{
+        const rp=await fetch(API+'/clima?pronostico=2&token='+encodeURIComponent(this.token),{headers:this.headers()});
+        const dp=await rp.json();
+        if(dp.success&&dp.pronostico&&dp.pronostico.length){
+          const man=dp.pronostico[0];
+          const lluvioso=man.lluvia>1, calido=man.tmax>28, fresco_=man.tmax<12;
+          let promEsperado=promGeneral, tipo='templado', ic='⛅';
+          if(lluvioso){promEsperado=promLluvia;tipo='lluvia';ic='🌧️';}
+          else if(calido){promEsperado=prom(caluroso)||promGeneral;tipo='calor';ic='☀️';}
+          else if(fresco_){promEsperado=prom(fresco)||promGeneral;tipo='frío';ic='❄️';}
+          const ajuste=promGeneral?Math.round((promEsperado-promGeneral)/promGeneral*100):0;
+          const fechaMan=new Date(man.fecha+'T12:00').toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
+          let accion='';
+          if(ajuste<=-8)accion=`Históricamente esos días vendés ~${Math.abs(ajuste)}% menos. <b>Conviene producir más moderado</b> para no quedar con sobrante.`;
+          else if(ajuste>=8)accion=`Históricamente esos días vendés ~${ajuste}% más. <b>Conviene producir un poco más</b> para no quedar corto.`;
+          else accion='Un día de ventas normales. Producí lo habitual.';
+          sugerencia=`<div style="background:linear-gradient(120deg,var(--violeta),var(--violeta-vivo));color:#fff;border-radius:14px;padding:1rem 1.2rem;margin-bottom:1rem">
+            <div style="font-size:.8rem;opacity:.85;text-transform:capitalize">${ic} Mañana · ${fechaMan}</div>
+            <div style="font-size:1.05rem;font-weight:600;margin:.2rem 0;font-family:'Fredoka'">${Math.round(man.tmax)}° máx · ${man.lluvia>0?man.lluvia+' mm de lluvia':'sin lluvia'} · día de ${tipo}</div>
+            <div style="font-size:.9rem;opacity:.95">${accion}</div>
+          </div>`;
+        }
+      }catch(e){}
       // Ventas máximas del tramo para barra comparativa
       const maxVenta=Math.max(1,...cruce.slice(-14).map(x=>x.total));
       const tabla=cruce.slice(-14).map(x=>{
@@ -1479,6 +1555,7 @@ const App = {
         </tr>`;
       }).join('');
       cont.innerHTML=`
+        ${sugerencia}
         ${insight?`<div class="aviso" style="margin-bottom:1rem;font-size:.95rem">💡 ${insight}</div>`:''}
         <div class="kpis" style="grid-template-columns:1fr 1fr;gap:.7rem;margin-bottom:1rem">
           <div class="kpi" style="text-align:center"><div style="font-size:2.4rem;line-height:1;margin-bottom:.2rem">🌧️</div><div class="lbl">Promedio días de lluvia</div><div class="val">${this.money(promLluvia)}</div><div class="sub">${lluvia.length} día(s)</div></div>
@@ -1702,12 +1779,44 @@ const App = {
         </div>`;
     }catch(e){el.innerHTML='<div class="vacio">Error: '+e.message+'</div>';}
   },
-  async ccPago(email,nombre){
-    const monto=prompt('Monto del pago en efectivo de '+(nombre||email)+':');
-    if(!monto)return;
-    const m=Number(monto); if(!m||m<=0){this.toast('Monto inválido','err');return;}
-    try{const r=await fetch(API+'/cuenta-corriente',{method:'POST',headers:this.headers(),body:JSON.stringify({accion:'pago',email,nombre,monto:m,token:this.token})});
-      const d=await r.json();if(d.success){this.toast('✓ Pago registrado · saldo: '+this.money(d.saldo),'ok');this.cargarCuentaCorriente();}else this.toast(d.error,'err');}catch(e){this.toast(e.message,'err');}
+  ccPago(email,nombre){
+    this.abrirModal('Registrar pago · '+(nombre||email),`
+      <label style="font-size:.82rem;color:#666">Monto del pago</label>
+      <input id="ccp-monto" type="number" step="any" style="width:100%;padding:.6rem;border:1px solid #ddd;border-radius:8px;margin:.3rem 0 .7rem;font-family:'Fredoka'">
+      <label style="font-size:.82rem;color:#666">Método</label>
+      <select id="ccp-metodo" style="width:100%;padding:.6rem;border:1px solid #ddd;border-radius:8px;margin:.3rem 0 .7rem">
+        <option value="efectivo">Efectivo</option>
+        <option value="transferencia">Transferencia</option>
+        <option value="mercadopago">Mercado Pago</option>
+      </select>
+      <label style="font-size:.82rem;color:#666">Comprobante</label>
+      <input id="ccp-file" type="file" accept="image/*,application/pdf" onchange="App.ccSubirComprobante(this)" style="width:100%;padding:.5rem;border:1px solid #ddd;border-radius:8px;margin:.3rem 0 .4rem;font-size:.85rem">
+      <div id="ccp-filemsg" style="font-size:.78rem;color:#888;margin-bottom:.5rem"></div>
+      <input id="ccp-comp" placeholder="…o pegá un link al comprobante" style="width:100%;padding:.6rem;border:1px solid #ddd;border-radius:8px;margin:.3rem 0 .3rem">
+      <p style="font-size:.74rem;color:#aaa;margin-bottom:.8rem">Subí la foto/PDF del comprobante o pegá un link. Queda guardado en el pago.</p>
+      <button class="btn btn-violeta" style="width:100%" onclick="App.ccConfirmarPago('${email.replace(/'/g,"")}','${(nombre||'').replace(/'/g,"")}')">Registrar pago</button>`);
+  },
+  async ccSubirComprobante(input){
+    const f=input.files[0]; if(!f)return;
+    const msg=document.getElementById('ccp-filemsg');
+    msg.textContent='Subiendo…';
+    try{
+      const b64=await this.fileABase64(f);
+      const r=await fetch(API+'/subir-archivo',{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({carpeta:'comprobantes',nombre:'comp',contenidoBase64:b64,tipo:f.type})});
+      const d=await r.json();
+      if(d.success){document.getElementById('ccp-comp').value=d.url;msg.innerHTML='✓ Comprobante subido';msg.style.color='var(--ok)';}
+      else{msg.textContent='Error: '+(d.error||'no se pudo subir');msg.style.color='var(--err)';}
+    }catch(e){msg.textContent='Error: '+e.message;msg.style.color='var(--err)';}
+  },
+  fileABase64(file){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(String(r.result).split(',')[1]);r.onerror=rej;r.readAsDataURL(file);});},
+  async ccConfirmarPago(email,nombre){
+    const m=Number(document.getElementById('ccp-monto').value);
+    if(!m||m<=0){this.toast('Monto inválido','err');return;}
+    const metodo=document.getElementById('ccp-metodo').value;
+    const comp=document.getElementById('ccp-comp').value.trim();
+    const detalle='Pago '+metodo+(comp?' (con comprobante)':'');
+    try{const r=await fetch(API+'/cuenta-corriente',{method:'POST',headers:this.headers(),body:JSON.stringify({accion:'pago',email,nombre,monto:m,metodo,comprobanteUrl:comp,detalle,token:this.token})});
+      const d=await r.json();if(d.success){this.cerrarModal();this.toast('✓ Pago registrado · saldo: '+this.money(d.saldo),'ok');this.cargarCuentaCorriente();}else this.toast(d.error,'err');}catch(e){this.toast(e.message,'err');}
   },
   ccAjuste(){
     const email=prompt('Email del cliente para configurar saldo inicial:');
@@ -1725,7 +1834,9 @@ const App = {
       const d=await r.json();
       const movs=(d.movimientos||[]).map(m=>{
         const suma=Number(m.monto)>0;
-        return `<tr><td style="font-size:.78rem;color:#888">${m.fecha?new Date(m.fecha).toLocaleDateString('es-AR'):''}</td><td style="font-size:.82rem">${m.detalle||m.tipo}</td><td style="text-align:right;font-weight:600;color:${suma?'var(--err)':'var(--ok)'}">${suma?'+':''}${this.money(m.monto)}</td></tr>`;
+        const comp=m.comprobante_url?` <a href="${m.comprobante_url}" target="_blank" style="color:var(--violeta-vivo);font-size:.72rem">📎 ver</a>`:'';
+        const met=m.metodo?` <span style="color:#bbb;font-size:.72rem">· ${m.metodo}</span>`:'';
+        return `<tr><td style="font-size:.78rem;color:#888">${m.fecha?new Date(m.fecha).toLocaleDateString('es-AR'):''}</td><td style="font-size:.82rem">${m.detalle||m.tipo}${met}${comp}</td><td style="text-align:right;font-weight:600;color:${suma?'var(--err)':'var(--ok)'}">${suma?'+':''}${this.money(m.monto)}</td></tr>`;
       }).join('');
       document.getElementById('modal-body').innerHTML=`
         <div style="background:#f6f4ef;border-radius:10px;padding:.8rem 1rem;margin-bottom:1rem;text-align:center">
@@ -1734,6 +1845,217 @@ const App = {
         </div>
         <table class="tabla"><thead><tr><th>Fecha</th><th>Detalle</th><th style="text-align:right">Monto</th></tr></thead><tbody>${movs||'<tr><td colspan=3 style="text-align:center;color:#aaa">Sin movimientos</td></tr>'}</tbody></table>`;
     }catch(e){document.getElementById('modal-body').innerHTML='<div class="vacio">Error: '+e.message+'</div>';}
+  },
+
+  
+  // ---------- DOCUMENTOS · DATA ENTRY AUTOMÁTICO (costo cero) ----------
+  docExtraido:null,
+  async cargarDocumentos(){
+    const el=document.getElementById('doc-body');
+    el.innerHTML='<div class="spin">Cargando…</div>';
+    try{
+      const r=await fetch(API+'/documentos?token='+encodeURIComponent(this.token),{headers:this.headers()});
+      if(r.status===401){this.salir('Sesión inválida');return;}
+      const d=await r.json();
+      if(!d.success)throw new Error(d.error||'Error');
+      const docs=d.documentos||[];
+      const tLabel={factura:'Factura',comprobante:'Comprobante',factura_proveedor:'Fact. proveedor'};
+      const filas=docs.map(x=>`
+        <tr>
+          <td style="font-size:.78rem;color:#888">${x.fecha||(x.creado_en?new Date(x.creado_en).toLocaleDateString('es-AR'):'')}</td>
+          <td><span class="badge" style="background:#e8eaf6;color:#3f3e7a">${tLabel[x.tipo]||x.tipo}</span></td>
+          <td style="font-size:.85rem"><b>${x.emisor||'—'}</b>${x.cuit?`<div style="font-size:.72rem;color:#aaa">CUIT ${x.cuit}</div>`:''}</td>
+          <td style="font-size:.82rem">${x.numero||'—'}</td>
+          <td style="text-align:right;font-weight:600">${this.money(x.importe_total)}</td>
+          <td>${x.estado==='revisado'?'<span class="badge pago-ok">revisado</span>':'<span class="badge pago-pend">a revisar</span>'}</td>
+          <td style="text-align:right;white-space:nowrap">
+            ${x.archivo_url?`<a href="${x.archivo_url}" target="_blank" class="btn btn-sm btn-ghost">📎</a>`:''}
+            <button class="btn btn-sm btn-ghost" onclick="App.docVer(${x.id})">Ver</button>
+          </td>
+        </tr>`).join('');
+      el.innerHTML=`
+        <div class="panel">
+          <h2 style="margin-bottom:.3rem">📑 Lector de documentos</h2>
+          <p style="font-size:.84rem;color:#888;margin-bottom:.9rem">Subí la foto de una factura o comprobante. El sistema lee el <b>QR de AFIP</b> (datos fiscales exactos) y hace <b>OCR</b> del resto, todo en tu navegador y sin costo. Después revisás y guardás.</p>
+          <div style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:center">
+            <input type="file" id="doc-file" accept="image/*" onchange="App.docProcesar(this)" style="flex:1;min-width:220px;padding:.5rem;border:1px solid #ddd;border-radius:8px">
+          </div>
+          <div id="doc-proceso" style="margin-top:.8rem"></div>
+          <div id="doc-form"></div>
+        </div>
+        <div class="panel">
+          <h2 style="margin-bottom:.3rem">Documentos cargados (${docs.length})</h2>
+          <p style="font-size:.82rem;color:#888;margin-bottom:.8rem">Todo el data entry, ordenado para monitoreo. "A revisar" = recién extraído; revisalo y marcá listo.</p>
+          <div style="overflow-x:auto"><table class="tabla"><thead><tr><th>Fecha</th><th>Tipo</th><th>Emisor</th><th>Número</th><th style="text-align:right">Total</th><th>Estado</th><th></th></tr></thead><tbody>${filas||'<tr><td colspan="7" style="text-align:center;color:#aaa;padding:1rem">Todavía no cargaste documentos</td></tr>'}</tbody></table></div>
+        </div>`;
+    }catch(e){el.innerHTML='<div class="vacio">Error: '+e.message+'</div>';}
+  },
+
+  // Decodifica el QR de AFIP (URL afip.gob.ar/fe/qr/?p=base64 → JSON con datos fiscales)
+  parseQrAfip(texto){
+    try{
+      let p=null;
+      const m=String(texto).match(/[?&]p=([A-Za-z0-9+/=_-]+)/);
+      if(m)p=m[1];
+      if(!p)return null;
+      let b64=p.replace(/-/g,'+').replace(/_/g,'/');
+      const json=JSON.parse(decodeURIComponent(escape(atob(b64))));
+      return json; // {ver,fecha,cuit,ptoVta,tipoCmp,nroCmp,importe,moneda,...,codAut}
+    }catch(e){return null;}
+  },
+
+  async docProcesar(input){
+    const f=input.files[0]; if(!f)return;
+    const proc=document.getElementById('doc-proceso');
+    const form=document.getElementById('doc-form'); form.innerHTML='';
+    proc.innerHTML='<div class="spin">Leyendo la imagen…</div>';
+    try{
+      // 1) Subir el archivo a Storage (para tener el respaldo)
+      const b64=await this.fileABase64(f);
+      let archivoUrl='';
+      try{
+        const rs=await fetch(API+'/subir-archivo',{method:'POST',headers:this.headers(),body:JSON.stringify({carpeta:'comprobantes',nombre:'doc',contenidoBase64:b64,tipo:f.type,token:this.token})});
+        const ds=await rs.json(); if(ds.success)archivoUrl=ds.url;
+      }catch(e){}
+
+      // 2) Cargar la imagen en un canvas
+      const img=new Image(); img.src='data:'+f.type+';base64,'+b64;
+      await new Promise(r=>{img.onload=r;});
+      const cv=document.createElement('canvas'); cv.width=img.width; cv.height=img.height;
+      const ctx=cv.getContext('2d'); ctx.drawImage(img,0,0);
+
+      // 3) Intentar leer QR de AFIP
+      let qr=null;
+      try{
+        const imgData=ctx.getImageData(0,0,cv.width,cv.height);
+        const code=jsQR(imgData.data,cv.width,cv.height);
+        if(code&&code.data)qr=this.parseQrAfip(code.data);
+      }catch(e){}
+
+      // 4) OCR del texto (Tesseract) — para emisor, ítems y comprobantes sin QR
+      proc.innerHTML='<div class="spin">Extrayendo texto (OCR)… puede tardar unos segundos</div>';
+      let texto='';
+      try{
+        const res=await Tesseract.recognize(img.src,'spa');
+        texto=res.data.text||'';
+      }catch(e){ texto=''; }
+
+      // 5) Armar los datos extraídos
+      const datos=this.extraerDatos(qr,texto);
+      datos.archivoUrl=archivoUrl; datos.datosQr=qr; datos.textoOcr=texto;
+      this.docExtraido=datos;
+      proc.innerHTML=qr?'<div class="aviso" style="font-size:.85rem">✓ QR de AFIP leído: datos fiscales exactos.</div>':'<div class="aviso" style="font-size:.85rem;background:#fdf3e0;border-color:#e7c98f">Sin QR de AFIP — datos extraídos por OCR, revisalos bien.</div>';
+      this.docRenderForm(datos);
+    }catch(e){proc.innerHTML='<div class="vacio">Error: '+e.message+'</div>';}
+  },
+
+  extraerDatos(qr,texto){
+    const d={tipo:'comprobante',origen:'mayorista',emisor:'',cuit:'',numero:'',fecha:'',importeTotal:0,cae:'',metodo:'',items:[]};
+    if(qr){
+      d.tipo='factura';
+      d.cuit=String(qr.cuit||'');
+      d.fecha=qr.fecha||'';
+      d.importeTotal=Number(qr.importe)||0;
+      d.cae=String(qr.codAut||'');
+      if(qr.ptoVta&&qr.nroCmp)d.numero=String(qr.ptoVta).padStart(5,'0')+'-'+String(qr.nroCmp).padStart(8,'0');
+      const tipos={1:'Factura A',6:'Factura B',11:'Factura C',51:'Factura M'};
+      d.tipoComprobante=tipos[qr.tipoCmp]||('Tipo '+qr.tipoCmp);
+    }
+    const t=texto||'';
+    // CUIT (si no vino del QR)
+    if(!d.cuit){const m=t.match(/\b(\d{2}[-\s]?\d{8}[-\s]?\d)\b/);if(m)d.cuit=m[1].replace(/[-\s]/g,'');}
+    // Fecha DD/MM/AAAA
+    if(!d.fecha){const m=t.match(/\b(\d{1,2})\/(\d{1,2})\/(\d{2,4})\b/);if(m){let y=m[3].length===2?'20'+m[3]:m[3];d.fecha=`${y}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;}}
+    // Importe total (busca "total" + número)
+    if(!d.importeTotal){const m=t.match(/total[^\d]{0,12}\$?\s*([\d.]+,\d{2})/i);if(m)d.importeTotal=this.parseMonto(m[1]);}
+    // Emisor: primera línea con texto (heurística)
+    if(!d.emisor){const lineas=t.split('\n').map(x=>x.trim()).filter(x=>x.length>3&&/[a-zA-Z]/.test(x));if(lineas.length)d.emisor=lineas[0].slice(0,60);}
+    // Método de pago si lo menciona
+    if(/transferencia/i.test(t))d.metodo='transferencia';
+    else if(/mercado\s*pago/i.test(t))d.metodo='mercadopago';
+    else if(/efectivo/i.test(t))d.metodo='efectivo';
+    // Ítems: líneas que tienen una descripción y un precio al final
+    const items=[];
+    t.split('\n').forEach(l=>{
+      const m=l.match(/^(.+?)\s+(\d+)?\s*\$?\s*([\d.]+,\d{2})\s*$/);
+      if(m&&m[1].length>3&&/[a-zA-Z]/.test(m[1])){
+        const cant=m[2]?Number(m[2]):1; const sub=this.parseMonto(m[3]);
+        items.push({descripcion:m[1].trim().slice(0,80),cantidad:cant,precioUnitario:cant?Math.round(sub/cant*100)/100:sub,subtotal:sub});
+      }
+    });
+    d.items=items.slice(0,30);
+    return d;
+  },
+  parseMonto(s){return Number(String(s).replace(/\./g,'').replace(',','.'))||0;},
+
+  docRenderForm(d){
+    const itemsRows=(d.items||[]).map((it,i)=>`
+      <tr>
+        <td><input value="${(it.descripcion||'').replace(/"/g,'&quot;')}" oninput="App.docExtraido.items[${i}].descripcion=this.value" style="width:100%;border:1px solid #eee;border-radius:6px;padding:.3rem;font-size:.82rem"></td>
+        <td><input type="number" value="${it.cantidad}" oninput="App.docExtraido.items[${i}].cantidad=Number(this.value)" style="width:55px;border:1px solid #eee;border-radius:6px;padding:.3rem;text-align:center"></td>
+        <td><input type="number" value="${it.subtotal}" oninput="App.docExtraido.items[${i}].subtotal=Number(this.value)" style="width:90px;border:1px solid #eee;border-radius:6px;padding:.3rem;text-align:right"></td>
+        <td><button class="btn btn-sm" style="background:#fde8e6;color:#b13a34" onclick="App.docExtraido.items.splice(${i},1);App.docRenderForm(App.docExtraido)">×</button></td>
+      </tr>`).join('');
+    const inp=(label,campo,val,tipo)=>`<div style="flex:1;min-width:150px"><label style="font-size:.78rem;color:#666">${label}</label><input ${tipo||''} value="${val||''}" oninput="App.docExtraido.${campo}=this.value" style="width:100%;padding:.5rem;border:1px solid #ddd;border-radius:8px;margin-top:.2rem"></div>`;
+    document.getElementById('doc-form').innerHTML=`
+      <div style="border:1px solid #ece8df;border-radius:12px;padding:1rem;margin-top:.8rem;background:#fbfaf7">
+        <h3 style="font-size:.95rem;color:var(--violeta-osc);margin-bottom:.7rem">Datos extraídos — revisá y ajustá si hace falta</h3>
+        <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:.6rem">
+          <div style="flex:1;min-width:150px"><label style="font-size:.78rem;color:#666">Tipo</label>
+            <select onchange="App.docExtraido.tipo=this.value" style="width:100%;padding:.5rem;border:1px solid #ddd;border-radius:8px;margin-top:.2rem">
+              <option value="factura" ${d.tipo==='factura'?'selected':''}>Factura</option>
+              <option value="comprobante" ${d.tipo==='comprobante'?'selected':''}>Comprobante de pago</option>
+              <option value="factura_proveedor" ${d.tipo==='factura_proveedor'?'selected':''}>Factura de proveedor</option>
+            </select></div>
+          ${inp('Emisor','emisor',d.emisor)}
+          ${inp('CUIT','cuit',d.cuit)}
+        </div>
+        <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:.6rem">
+          ${inp('Número','numero',d.numero)}
+          ${inp('Fecha','fecha',d.fecha,'type=date')}
+          ${inp('Importe total','importeTotal',d.importeTotal,'type=number')}
+          ${inp('CAE','cae',d.cae)}
+        </div>
+        <h4 style="font-size:.85rem;color:var(--violeta-osc);margin:.6rem 0 .3rem">Ítems (línea por línea)</h4>
+        <table class="tabla"><thead><tr><th>Descripción</th><th>Cant</th><th style="text-align:right">Subtotal</th><th></th></tr></thead><tbody id="doc-items">${itemsRows||'<tr><td colspan="4" style="color:#aaa;text-align:center">Sin ítems detectados — agregá manual si querés</td></tr>'}</tbody></table>
+        <button class="btn btn-ghost btn-sm" style="margin-top:.5rem" onclick="App.docExtraido.items.push({descripcion:'',cantidad:1,precioUnitario:0,subtotal:0});App.docRenderForm(App.docExtraido)">+ Agregar ítem</button>
+        <button class="btn btn-violeta" style="width:100%;margin-top:.8rem" onclick="App.docGuardar()">Guardar documento</button>
+      </div>`;
+  },
+  async docGuardar(){
+    const d=this.docExtraido; if(!d){this.toast('Subí un documento primero','err');return;}
+    try{
+      const r=await fetch(API+'/documentos',{method:'POST',headers:this.headers(),body:JSON.stringify({accion:'guardar',doc:d,items:d.items||[],token:this.token})});
+      const res=await r.json();
+      if(res.success){this.toast('✓ Documento guardado','ok');this.docExtraido=null;this.cargarDocumentos();}
+      else this.toast(res.error||'Error','err');
+    }catch(e){this.toast(e.message,'err');}
+  },
+  async docVer(id){
+    this.abrirModal('Documento','<div class="spin">Cargando…</div>');
+    try{
+      const r=await fetch(API+'/documentos?id='+id+'&token='+encodeURIComponent(this.token),{headers:this.headers()});
+      const d=await r.json(); const x=d.documento||{};
+      const items=(d.items||[]).map(i=>`<tr><td>${i.descripcion}</td><td style="text-align:center">${i.cantidad}</td><td style="text-align:right">${this.money(i.subtotal)}</td></tr>`).join('')||'<tr><td colspan=3 style="text-align:center;color:#aaa">Sin ítems</td></tr>';
+      document.getElementById('modal-body').innerHTML=`
+        <table class="tabla" style="margin-bottom:.8rem">
+          <tr><td>Tipo</td><td style="text-align:right;font-weight:600">${x.tipo}</td></tr>
+          <tr><td>Emisor</td><td style="text-align:right">${x.emisor||'—'}</td></tr>
+          <tr><td>CUIT</td><td style="text-align:right">${x.cuit||'—'}</td></tr>
+          <tr><td>Número</td><td style="text-align:right">${x.numero||'—'}</td></tr>
+          <tr><td>Fecha</td><td style="text-align:right">${x.fecha||'—'}</td></tr>
+          <tr><td>CAE</td><td style="text-align:right">${x.cae||'—'}</td></tr>
+          <tr><td>Total</td><td style="text-align:right;font-weight:700">${this.money(x.importe_total)}</td></tr>
+        </table>
+        <h4 style="font-size:.85rem;color:var(--violeta-osc);margin:.4rem 0">Ítems</h4>
+        <table class="tabla"><thead><tr><th>Descripción</th><th>Cant</th><th style="text-align:right">Subtotal</th></tr></thead><tbody>${items}</tbody></table>
+        ${x.archivo_url?`<a href="${x.archivo_url}" target="_blank" class="btn btn-ghost btn-sm" style="margin-top:.8rem">📎 Ver original</a>`:''}
+        ${x.estado!=='revisado'?`<button class="btn btn-violeta btn-sm" style="margin-top:.8rem;margin-left:.4rem" onclick="App.docRevisar(${id})">✓ Marcar revisado</button>`:''}`;
+    }catch(e){document.getElementById('modal-body').innerHTML='<div class="vacio">Error: '+e.message+'</div>';}
+  },
+  async docRevisar(id){
+    try{const r=await fetch(API+'/documentos',{method:'POST',headers:this.headers(),body:JSON.stringify({accion:'revisar',id,estado:'revisado',token:this.token})});
+      const d=await r.json();if(d.success){this.cerrarModal();this.toast('✓ Marcado revisado','ok');this.cargarDocumentos();}}catch(e){this.toast(e.message,'err');}
   },
 
     toast(msg,tipo){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show '+(tipo||'');setTimeout(()=>{t.className='toast';},2400);}
