@@ -22,7 +22,7 @@ exports.handler = async (event) => {
   try {
     const { data: lote } = await supabase
       .from('lotes_produccion')
-      .select('id, codigo_trazabilidad, cantidad_producida, costo_total, responsable, notas, fecha, productos(nombre)')
+      .select('id, codigo_trazabilidad, cantidad_producida, cantidad_esperada, costo_total, estado, empleado, responsable, notas, fecha, hora_inicio, hora_fin, productos(nombre)')
       .eq('id', id).maybeSingle();
     if (!lote) return bad(404, 'Lote no encontrado');
 
@@ -36,8 +36,16 @@ exports.handler = async (event) => {
       lote: {
         id: lote.id, codigo: lote.codigo_trazabilidad,
         producto: lote.productos ? lote.productos.nombre : '',
-        cantidad: Number(lote.cantidad_producida), costo: Number(lote.costo_total),
-        responsable: lote.responsable, notas: lote.notas, fecha: lote.fecha,
+        estado: lote.estado || 'finalizado',
+        cantidad: Number(lote.cantidad_producida),
+        cantidadEsperada: lote.cantidad_esperada == null ? null : Number(lote.cantidad_esperada),
+        diferencia: (lote.estado !== 'en_proceso' && lote.cantidad_esperada != null)
+          ? Number(lote.cantidad_producida) - Number(lote.cantidad_esperada) : null,
+        tiempoMin: (lote.hora_inicio && lote.hora_fin)
+          ? Math.max(0, Math.round((new Date(lote.hora_fin) - new Date(lote.hora_inicio)) / 60000)) : null,
+        costo: Number(lote.costo_total),
+        empleado: lote.empleado || lote.responsable || '',
+        responsable: lote.responsable || lote.empleado || '', notas: lote.notas, fecha: lote.fecha,
         ingredientes: (ings || []).map(i => ({
           nombre: i.nombre, cantidad: Number(i.cantidad), unidad: i.unidad, costo: Number(i.costo_linea)
         }))
