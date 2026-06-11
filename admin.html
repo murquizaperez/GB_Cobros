@@ -80,6 +80,13 @@ h1,h2,h3,h4,.fred,.sec-tit,.sb-head .t{font-weight:600!important}
 .panel h2{font-size:1.1rem;color:var(--violeta-osc);margin-bottom:.8rem}
 .dos-col{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem}
 @media(max-width:800px){.dos-col{grid-template-columns:1fr}}
+.accesos{display:grid;grid-template-columns:1fr 1fr;gap:.8rem}
+.acceso{display:flex;flex-direction:column;align-items:flex-start;gap:.2rem;text-align:left;background:var(--crema);border:1px solid rgba(84,83,163,.12);border-radius:12px;padding:.9rem 1rem;cursor:pointer;transition:.15s;font-family:'Poppins',sans-serif}
+.acceso:hover{background:#fff;border-color:var(--violeta);box-shadow:0 2px 10px rgba(63,62,122,.1);transform:translateY(-1px)}
+.acceso b{font-family:'Fredoka',sans-serif;font-weight:600;color:var(--violeta-osc);font-size:1.02rem}
+.acceso span{font-size:.78rem;color:#999}
+@media(max-width:480px){.accesos{grid-template-columns:1fr}}
+.chip{display:inline-block;padding:.2rem .6rem;border-radius:999px;font-size:.74rem;font-weight:600}
 
 /* TABLA PRODUCTOS */
 .tabla{width:100%;border-collapse:collapse;font-size:.88rem}
@@ -199,6 +206,7 @@ h1,h2,h3,h4,.fred,.sec-tit,.sb-head .t{font-weight:600!important}
     <div class="sb-group" data-rol="dueño">
       <div class="sb-label">Sistema</div>
       <button class="sb-item" data-sec="usuarios" onclick="App.ir('usuarios')"><span class="ic">👥</span>Usuarios</button>
+      <button class="sb-item" data-sec="configuracion" onclick="App.ir('configuracion')"><span class="ic">⚙️</span>Configuración</button>
     </div>
     <div class="sb-foot">v1.0 · Supabase + Netlify<br><a href="#" onclick="App.salir();return false" style="color:#9b9ad0">Cerrar sesión</a></div>
   </aside>
@@ -252,6 +260,7 @@ h1,h2,h3,h4,.fred,.sec-tit,.sb-head .t{font-weight:600!important}
       <div class="seccion" id="sec-documentos"><div id="doc-body"></div></div>
       <div class="seccion" id="sec-reportes"><div id="rep-body"></div></div>
       <div class="seccion" id="sec-usuarios"><div id="usr-body"></div></div>
+      <div class="seccion" id="sec-configuracion"><div id="config-body"></div></div>
     </div>
   </div>
 </div>
@@ -278,7 +287,7 @@ const App = {
   token:'', seccion:'dashboard', filtro:'', pedidos:[], productos:[],
 
   rol:'', usuario:'',
-  ROLES:{ 'dueño':['dashboard','productos','ingredientes','produccion','planning','pos','caja','reportes','pedidos','mayorista','promos','cuentacorriente','documentos','usuarios'], 'cajero':['pos','caja','pedidos'] },
+  ROLES:{ 'dueño':['dashboard','productos','ingredientes','produccion','planning','pos','caja','reportes','pedidos','mayorista','promos','cuentacorriente','documentos','usuarios','configuracion'], 'cajero':['pos','caja','pedidos'] },
   async entrar(){
     const pin=document.getElementById('pin').value.trim();
     if(!pin){this.toast('Ingresá tu PIN','err');return;}
@@ -326,7 +335,7 @@ const App = {
     document.querySelectorAll('.seccion').forEach(s=>s.classList.remove('activa'));
     document.getElementById('sec-'+sec).classList.add('activa');
     document.querySelectorAll('.sb-item').forEach(b=>b.classList.toggle('activo',b.dataset.sec===sec));
-    document.getElementById('titulo').textContent=({dashboard:'Dashboard',productos:'Productos y Stock',pedidos:'Pedidos',pos:'Punto de Venta',caja:'Caja',ingredientes:'Ingredientes',produccion:'Producción y Lotes',reportes:'Reportes'})[sec]||sec;
+    document.getElementById('titulo').textContent=({dashboard:'Dashboard',productos:'Productos y Stock',pedidos:'Pedidos',pos:'Punto de Venta',caja:'Caja',ingredientes:'Ingredientes',produccion:'Producción y Lotes',reportes:'Reportes',configuracion:'Configuración'})[sec]||sec;
     document.getElementById('sidebar').classList.remove('abierto');
     if(sec==='dashboard')this.cargarDashboard();
     if(sec==='productos')this.cargarProductos();
@@ -342,6 +351,7 @@ const App = {
     if(sec==='promos')this.cargarPromos();
     if(sec==='cuentacorriente')this.cargarCuentaCorriente();
     if(sec==='documentos')this.cargarDocumentos();
+    if(sec==='configuracion')this.cargarConfig();
   },
   toggleMenu(){document.getElementById('sidebar').classList.toggle('abierto');},
 
@@ -354,7 +364,6 @@ const App = {
       if(r.status===401){this.salir('Clave incorrecta');return;}
       const d=await r.json();
       if(!d.success)throw new Error(d.error||'Error');
-      const cajaTxt=d.caja.abierta?('<span style="color:var(--ok)">Abierta</span> · '+(d.caja.responsable||'—')):'<span style="color:#999">Cerrada</span>';
       const stockBajo=(d.stockBajo||[]).length
         ? d.stockBajo.map(s=>`<tr><td>${s.nombre}</td><td style="text-align:right;font-weight:600;color:${s.stock<=0?'var(--err)':'var(--warn)'}">${s.stock}</td></tr>`).join('')
         : '<tr><td colspan="2" style="color:#aaa;text-align:center">Todo con stock 👍</td></tr>';
@@ -362,23 +371,32 @@ const App = {
         <div class="kpis">
           <div class="kpi verde"><div class="lbl">Ventas hoy</div><div class="val">${this.money(d.ventasHoy)}</div><div class="sub">${d.txHoy} transacciones</div></div>
           <div class="kpi"><div class="lbl">Ventas semana</div><div class="val">${this.money(d.ventasSemana)}</div></div>
-          <div class="kpi"><div class="lbl">Ventas mes</div><div class="val">${this.money(d.ventasMes)}</div></div>
           <div class="kpi naranja"><div class="lbl">Pedidos pendientes</div><div class="val">${d.pedidosPendientes}</div></div>
+          <div class="kpi"><div class="lbl">Estado caja</div><div class="val" style="color:${d.caja.abierta?'var(--ok)':'#999'}">${d.caja.abierta?'Abierta':'Cerrada'}</div><div class="sub">${d.caja.abierta?(d.caja.responsable||'—'):'sin turno activo'}</div></div>
         </div>
         <div class="dos-col">
           <div class="panel">
-            <h2>Resumen</h2>
+            <h2>Estadísticas</h2>
             <table class="tabla">
-              <tr><td>Productos activos</td><td style="text-align:right;font-weight:600">${d.totalProductos}</td></tr>
-              <tr><td>Ingredientes</td><td style="text-align:right;font-weight:600">${d.totalIngredientes}</td></tr>
+              <tr><td>Total Productos</td><td style="text-align:right;font-weight:600">${d.totalProductos}</td></tr>
+              <tr><td>Total Ingredientes</td><td style="text-align:right;font-weight:600">${d.totalIngredientes}</td></tr>
               <tr><td>Clientes</td><td style="text-align:right;font-weight:600">${d.totalClientes}</td></tr>
-              <tr><td>Estado de caja</td><td style="text-align:right;font-weight:600">${cajaTxt}</td></tr>
+              <tr><td>Ventas Mes</td><td style="text-align:right;font-weight:600">${this.money(d.ventasMes)}</td></tr>
             </table>
           </div>
           <div class="panel">
-            <h2>⚠️ Stock bajo (≤ 5)</h2>
-            <table class="tabla"><tbody>${stockBajo}</tbody></table>
+            <h2>Accesos rápidos</h2>
+            <div class="accesos">
+              <button class="acceso" onclick="App.ir('produccion')"><b>Producción</b><span>Manejo de lotes</span></button>
+              <button class="acceso" onclick="App.ir('ingredientes')"><b>Ingredientes</b><span>Gestionar materia prima</span></button>
+              <button class="acceso" onclick="App.ir('caja')"><b>Caja</b><span>Abrir/cerrar caja</span></button>
+              <button class="acceso" onclick="App.ir('pos')"><b>Punto de Venta</b><span>Registrar ventas</span></button>
+            </div>
           </div>
+        </div>
+        <div class="panel">
+          <h2>⚠️ Stock bajo (≤ 5)</h2>
+          <table class="tabla"><tbody>${stockBajo}</tbody></table>
         </div>`;
     }catch(e){el.innerHTML='<div class="vacio">No se pudo cargar el dashboard.<br><small>'+e.message+'</small></div>';}
   },
@@ -893,14 +911,24 @@ const App = {
         <div id="pred-body"><div class="spin">…</div></div>
       </div>
       <div class="panel">
-        <h2>🏭 Producir un lote</h2>
-        <p style="font-size:.85rem;color:#888;margin-bottom:.6rem">Elegí qué producto vas a producir. Si tiene receta, se descuenta la materia prima sola.</p>
+        <div style="display:flex;align-items:flex-start;gap:.6rem;flex-wrap:wrap">
+          <div>
+            <h2 style="margin:0">🏭 Producción y Trazabilidad</h2>
+            <p style="font-size:.85rem;color:#888;margin:.25rem 0 0">Control de lotes, mermas y descuento de stock</p>
+          </div>
+          <button class="btn btn-violeta" style="margin-left:auto" onclick="App.iniciarTanda()">⚡ Iniciar Producción</button>
+        </div>
+      </div>
+      <div class="panel" id="panel-procesos" style="border-left:3px solid var(--warn)"><h2>🟡 Tandas en Proceso</h2><div id="procesos-body"><div class="spin">…</div></div></div>
+      <div class="panel" id="panel-lotes"><h2>Historial de Lotes Finalizados</h2><div id="lotes-body"><div class="spin">…</div></div></div>
+      <details class="panel">
+        <summary style="cursor:pointer;font-family:'Fredoka';font-weight:600;color:var(--violeta-osc)">🧪 Editar recetas</summary>
+        <p style="font-size:.82rem;color:#888;margin:.6rem 0">Elegí un producto para ver y ajustar su receta (materia prima por unidad).</p>
         <select id="prodc-sel" onchange="App.verReceta(this.value)" style="width:100%;max-width:380px;padding:.5rem;border:1px solid #ddd;border-radius:8px;font-family:'Poppins';margin-bottom:1rem">
           <option value="">— Elegí un producto —</option>${opts}
         </select>
         <div id="prodc-detalle"></div>
-      </div>
-      <div class="panel" id="panel-lotes"><h2>Historial de lotes</h2><div id="lotes-body"><div class="spin">…</div></div></div>`;
+      </details>`;
     this.initPrediccionDias();
   },
   initPrediccionDias(){
@@ -948,11 +976,7 @@ const App = {
         <p style="font-size:.74rem;color:#aaa;margin-top:.6rem">Producir = demanda + pedidos − stock. Ganancia = margen × cantidad a producir. Ordenado por lo más rentable. ⚠️ = puede faltar materia prima.</p>`;
     }catch(e){cont.innerHTML='<div class="vacio">Error: '+e.message+'</div>';}
   },
-  producirSugerido(productoId,cantidad){
-    document.getElementById('prodc-sel').value=productoId;
-    this.verReceta(productoId);
-    setTimeout(()=>{const c=document.getElementById('prodc-cant');if(c){c.value=cantidad;c.scrollIntoView({behavior:'smooth',block:'center'});}},400);
-  },
+  producirSugerido(productoId,cantidad){ this.iniciarTanda(productoId,cantidad); },
   async verReceta(productoId){
     this.prodSel=productoId?parseInt(productoId,10):null;
     const cont=document.getElementById('prodc-detalle');
@@ -975,26 +999,16 @@ const App = {
         <td><button class="btn btn-sm" style="background:#fde8e6;color:#b13a34" onclick="App.quitarItemReceta(${idx})">×</button></td>
       </tr>`).join('');
     document.getElementById('prodc-detalle').innerHTML=`
-      <div class="dos-col" style="margin-top:.5rem">
-        <div>
-          <h3 class="fred" style="color:var(--violeta-osc);margin-bottom:.5rem">Receta (por unidad)</h3>
-          <table class="tabla"><tbody id="receta-filas">${filasReceta||'<tr><td colspan="4" style="color:#aaa;text-align:center;padding:1rem">Sin receta. Agregá ingredientes o producí sin receta.</td></tr>'}</tbody></table>
-          <div style="display:flex;gap:.4rem;margin-top:.6rem;flex-wrap:wrap">
-            <select id="add-ing" style="flex:1;min-width:140px;padding:.4rem;border:1px solid #ddd;border-radius:8px">${ingOpts}</select>
-            <input id="add-ing-cant" class="stock-input" placeholder="cant" value="">
-            <button class="btn btn-sm btn-ghost" onclick="App.agregarItemReceta()">+ Agregar</button>
-          </div>
-          <button class="btn btn-violeta btn-sm" style="margin-top:.6rem" onclick="App.guardarReceta()">Guardar receta</button>
+      <div style="margin-top:.5rem">
+        <h3 class="fred" style="color:var(--violeta-osc);margin-bottom:.5rem">Receta (por unidad)</h3>
+        <table class="tabla"><tbody id="receta-filas">${filasReceta||'<tr><td colspan="4" style="color:#aaa;text-align:center;padding:1rem">Sin receta. Agregá ingredientes.</td></tr>'}</tbody></table>
+        <div style="display:flex;gap:.4rem;margin-top:.6rem;flex-wrap:wrap">
+          <select id="add-ing" style="flex:1;min-width:140px;padding:.4rem;border:1px solid #ddd;border-radius:8px">${ingOpts}</select>
+          <input id="add-ing-cant" class="stock-input" placeholder="cant" value="">
+          <button class="btn btn-sm btn-ghost" onclick="App.agregarItemReceta()">+ Agregar</button>
         </div>
-        <div>
-          <h3 class="fred" style="color:var(--violeta-osc);margin-bottom:.5rem">Producir</h3>
-          <label style="font-size:.82rem;color:#666">¿Cuántas unidades producís?</label>
-          <input id="prodc-cant" type="number" value="1" style="width:100%;padding:.5rem;border:1px solid #ddd;border-radius:8px;font-family:'Fredoka';margin:.3rem 0 .6rem">
-          <label style="font-size:.82rem;color:#666">Responsable</label>
-          <input id="prodc-resp" style="width:100%;padding:.5rem;border:1px solid #ddd;border-radius:8px;margin:.3rem 0 .6rem">
-          <button class="btn btn-violeta" style="width:100%" onclick="App.producirLote(false)">🏭 Producir lote</button>
-          <p style="font-size:.75rem;color:#aaa;margin-top:.5rem">Suma stock del producto y descuenta los ingredientes de la receta.</p>
-        </div>
+        <button class="btn btn-violeta btn-sm" style="margin-top:.6rem" onclick="App.guardarReceta()">Guardar receta</button>
+        <p style="font-size:.75rem;color:#aaa;margin-top:.5rem">La receta define el requerimiento teórico de materia prima al iniciar una tanda.</p>
       </div>`;
   },
   agregarItemReceta(){
@@ -1034,15 +1048,156 @@ const App = {
       }else this.toast(d.error||'Error','err');
     }catch(e){this.toast(e.message,'err');}
   },
+  fmtTiempo(min){ if(min==null)return '—'; const h=Math.floor(min/60); const m=min%60; return h+'h '+m+'m'; },
   async cargarLotes(){
     try{const r=await fetch(API+'/producir?token='+encodeURIComponent(this.token),{headers:this.headers()});
       const d=await r.json();
+      const proc=d.enProceso||[];
+      const fin=d.finalizados||[];
+      // Tandas en proceso
+      const pe=document.getElementById('procesos-body');
+      if(pe){
+        pe.innerHTML=proc.length?proc.map(l=>`
+          <div style="border:1px solid #f0e6c8;background:#fffdf5;border-radius:12px;padding:.9rem 1rem;margin-bottom:.7rem">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:.5rem;flex-wrap:wrap">
+              <span style="font-family:monospace;font-weight:600;color:var(--violeta-osc)">${l.codigo||'—'}</span>
+              <span class="chip" style="background:#fef3c7;color:#92670a">En proceso</span>
+            </div>
+            <div style="font-weight:600;margin:.3rem 0 .2rem">${l.producto}</div>
+            <div style="font-size:.84rem;color:#888">Esperado: <b>${l.cantidadEsperada??'—'}</b> unid. · ${l.empleado||'sin empleado'} · iniciado ${l.horaInicio?new Date(l.horaInicio).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):''}</div>
+            ${l.notas?`<div style="margin-top:.4rem;font-size:.82rem;color:#888"><i>Nota: ${l.notas}</i></div>`:''}
+            <button class="btn btn-violeta btn-sm" style="margin-top:.6rem" onclick="App.finalizarTanda(${l.id},${l.cantidadEsperada||0},'${(l.producto||'').replace(/'/g,"\\'")}')">✓ Finalizar tanda</button>
+          </div>`).join(''):'<div style="color:#aaa;text-align:center;padding:1rem">No hay producciones activas.</div>';
+      }
+      // Historial finalizados
       const el=document.getElementById('lotes-body');if(!el)return;
-      if(!d.lotes||!d.lotes.length){el.innerHTML='<div style="color:#aaa;text-align:center;padding:1rem">Sin lotes producidos aún</div>';return;}
-      el.innerHTML='<div style="overflow-x:auto"><table class="tabla"><thead><tr><th>Fecha</th><th>Lote</th><th>Producto</th><th>Cantidad</th><th>Costo</th><th>Responsable</th></tr></thead><tbody>'+
-        d.lotes.map(l=>`<tr><td style="font-size:.8rem;color:#888">${l.fecha?new Date(l.fecha).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):''}</td><td>${l.codigo?`<button class="btn btn-sm btn-ghost" style="font-family:monospace;font-size:.72rem" onclick="App.verLote(${l.id})">${l.codigo}</button>`:'—'}</td><td><b>${l.producto}</b></td><td>+${l.cantidad}</td><td>${this.money(l.costo)}</td><td>${l.responsable||'—'}</td></tr>`).join('')+
-        '</tbody></table></div>';
+      if(!fin.length){el.innerHTML='<div style="color:#aaa;text-align:center;padding:1rem">Sin lotes finalizados aún</div>';return;}
+      el.innerHTML=fin.map(l=>{
+        const dif=l.diferencia;
+        const difTxt=dif==null?'—':(dif>0?'+'+dif:''+dif);
+        const difCol=dif==null?'#888':(dif<0?'var(--err)':(dif>0?'var(--ok)':'#888'));
+        return `<div style="border:1px solid #eee;background:#fafafa;border-radius:12px;padding:.9rem 1rem;margin-bottom:.7rem;cursor:pointer" onclick="App.verLote(${l.id})">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:.5rem;flex-wrap:wrap">
+            <span style="font-family:monospace;font-weight:600;color:var(--violeta-osc)">${l.codigo||'—'}</span>
+            <span class="chip" style="background:#dcf5e6;color:#1d7a45">Finalizado</span>
+          </div>
+          <div style="font-weight:600;margin:.3rem 0 .3rem">${l.producto}</div>
+          <div style="display:flex;flex-wrap:wrap;gap:1rem;font-size:.84rem;color:#888">
+            <span>Real: <b style="color:#333">${l.cantidadReal}</b> unid.</span>
+            <span>Dif: <b style="color:${difCol}">${difTxt}</b></span>
+            <span>Costo: <b style="color:#333">${this.money(l.costo)}</b></span>
+            <span>Tiempo: <b style="color:#333">${this.fmtTiempo(l.tiempoMin)}</b></span>
+          </div>
+          ${l.notas?`<div style="margin-top:.5rem;background:#fff;border:1px solid #eee;border-radius:8px;padding:.4rem .7rem;font-size:.82rem;color:#888"><i>Nota: ${l.notas}</i></div>`:''}
+        </div>`;
+      }).join('');
     }catch(e){}
+  },
+
+  // ---------- INICIAR NUEVA TANDA (modal con merma) ----------
+  iniciarTanda(productoId,cantidad){
+    const opts=this.prodProductos.map(p=>`<option value="${p.id}" ${productoId&&p.id==productoId?'selected':''}>${p.nombre}</option>`).join('');
+    this.abrirModal('Iniciar Nueva Tanda',`
+      <label style="font-size:.85rem;color:#444;font-weight:600">Producto a elaborar *</label>
+      <select id="tanda-prod" onchange="App.recalcTanda()" style="width:100%;padding:.6rem;border:1px solid #ddd;border-radius:10px;font-family:'Poppins';margin:.3rem 0 .9rem">
+        <option value="">Seleccione un producto…</option>${opts}
+      </select>
+      <div class="dos-col">
+        <div>
+          <label style="font-size:.85rem;color:#444;font-weight:600">Empleado a cargo *</label>
+          <input id="tanda-emp" placeholder="Ej. Juan" style="width:100%;padding:.6rem;border:1px solid #ddd;border-radius:10px;margin-top:.3rem">
+        </div>
+        <div>
+          <label style="font-size:.85rem;color:#444;font-weight:600">Cantidad Esperada (Unid.) *</label>
+          <input id="tanda-cant" type="number" min="1" placeholder="Ej. 100" oninput="App.recalcTanda()" style="width:100%;padding:.6rem;border:1px solid #ddd;border-radius:10px;margin-top:.3rem">
+        </div>
+      </div>
+      <div style="background:#f3f4ff;border:1px solid #e2e3ff;border-radius:12px;padding:.9rem 1rem;margin:1rem 0">
+        <div style="font-family:'Fredoka';font-weight:600;color:var(--violeta-vivo);margin-bottom:.4rem">Requerimiento Teórico de Materia Prima</div>
+        <div id="tanda-req" style="font-size:.85rem;color:#666">Seleccione producto y cantidad.</div>
+        <hr style="border:none;border-top:1px solid #e2e3ff;margin:.7rem 0">
+        <div style="display:flex;justify-content:space-between;font-weight:600">
+          <span>Costo Total Estimado:</span><span id="tanda-costo" style="color:var(--violeta-vivo)">$0.00</span>
+        </div>
+      </div>
+      <div style="display:flex;gap:.6rem;justify-content:flex-end">
+        <button class="btn btn-ghost" onclick="App.cerrarModal()">Cancelar</button>
+        <button class="btn btn-violeta" id="tanda-go" onclick="App.generarTanda()">Generar Lote e Iniciar</button>
+      </div>`);
+    if(cantidad){const c=document.getElementById('tanda-cant');if(c)c.value=cantidad;}
+    if(productoId)this.recalcTanda();
+  },
+  async recalcTanda(){
+    const pid=parseInt(document.getElementById('tanda-prod').value,10);
+    const cant=Number(document.getElementById('tanda-cant').value)||0;
+    const req=document.getElementById('tanda-req');
+    const costoEl=document.getElementById('tanda-costo');
+    if(!pid||cant<=0){req.innerHTML='Seleccione producto y cantidad.';costoEl.textContent='$0.00';return;}
+    req.innerHTML='Calculando…';
+    try{
+      this._recetaCache=this._recetaCache||{};
+      let items=this._recetaCache[pid];
+      if(!items){const r=await fetch(API+'/receta?productoId='+pid+'&token='+encodeURIComponent(this.token),{headers:this.headers()});items=((await r.json()).items||[]);this._recetaCache[pid]=items;}
+      if(!items.length){req.innerHTML='<span style="color:#999">Sin receta — no descuenta materia prima.</span>';costoEl.textContent='$0.00';return;}
+      let costo=0;
+      const filas=items.map(it=>{const necesita=Number(it.cantidad)*cant;const cl=necesita*Number(it.costo||0);costo+=cl;return `<div style="display:flex;justify-content:space-between"><span>${it.nombre}</span><span>${(Math.round(necesita*100)/100)} ${it.unidad}</span></div>`;}).join('');
+      req.innerHTML=filas;
+      costoEl.textContent=this.money(costo);
+    }catch(e){req.innerHTML='Error: '+e.message;}
+  },
+  async generarTanda(forzar){
+    const pid=parseInt(document.getElementById('tanda-prod').value,10);
+    const emp=document.getElementById('tanda-emp').value.trim();
+    const cant=Number(document.getElementById('tanda-cant').value)||0;
+    if(!pid){this.toast('Elegí un producto','err');return;}
+    if(!emp){this.toast('Indicá el empleado a cargo','err');return;}
+    if(cant<=0){this.toast('Cantidad esperada inválida','err');return;}
+    const btn=document.getElementById('tanda-go');if(btn){btn.disabled=true;btn.textContent='Generando…';}
+    try{
+      const r=await fetch(API+'/producir',{method:'POST',headers:this.headers(),body:JSON.stringify({accion:'iniciar',productoId:pid,cantidadEsperada:cant,empleado:emp,forzar:!!forzar,token:this.token})});
+      const d=await r.json();
+      if(d.success){
+        this.cerrarModal();
+        this.toast('✓ Tanda iniciada: '+d.codigoTrazabilidad,'ok');
+        this.cargarLotes();
+      }else if(d.faltantes){
+        const txt=d.faltantes.map(f=>'• '+f.nombre+': necesitás '+f.necesita+', hay '+f.disponible).join('\n');
+        if(btn){btn.disabled=false;btn.textContent='Generar Lote e Iniciar';}
+        if(confirm('No alcanza la materia prima:\n\n'+txt+'\n\n¿Iniciar igual? (el stock de ingredientes quedará en 0)'))this.generarTanda(true);
+      }else{this.toast(d.error||'Error','err');if(btn){btn.disabled=false;btn.textContent='Generar Lote e Iniciar';}}
+    }catch(e){this.toast(e.message,'err');if(btn){btn.disabled=false;btn.textContent='Generar Lote e Iniciar';}}
+  },
+  finalizarTanda(loteId,esperada,producto){
+    this.abrirModal('Finalizar Tanda',`
+      <div style="background:#f6f4ef;border-radius:10px;padding:.8rem 1rem;margin-bottom:1rem">
+        <div style="font-weight:600">${producto}</div>
+        <div style="font-size:.84rem;color:#888;margin-top:.2rem">Cantidad esperada: ${esperada} unid.</div>
+      </div>
+      <label style="font-size:.85rem;color:#444;font-weight:600">¿Cuántas unidades salieron realmente?</label>
+      <input id="fin-real" type="number" min="0" value="${esperada}" style="width:100%;padding:.6rem;border:1px solid #ddd;border-radius:10px;font-family:'Fredoka';margin:.3rem 0 .9rem">
+      <label style="font-size:.85rem;color:#444;font-weight:600">Nota (opcional)</label>
+      <input id="fin-nota" placeholder="Ej. 1 kg" style="width:100%;padding:.6rem;border:1px solid #ddd;border-radius:10px;margin:.3rem 0 .9rem">
+      <p style="font-size:.78rem;color:#888;margin-bottom:1rem">La diferencia con lo esperado se registra como merma y se calcula el tiempo de producción. Recién al finalizar se suma el stock real al producto.</p>
+      <div style="display:flex;gap:.6rem;justify-content:flex-end">
+        <button class="btn btn-ghost" onclick="App.cerrarModal()">Cancelar</button>
+        <button class="btn btn-violeta" id="fin-go" onclick="App.confirmarFinalizar(${loteId})">Finalizar</button>
+      </div>`);
+  },
+  async confirmarFinalizar(loteId){
+    const real=Number(document.getElementById('fin-real').value);
+    const nota=(document.getElementById('fin-nota')||{}).value||'';
+    if(!(real>=0)){this.toast('Cantidad inválida','err');return;}
+    const btn=document.getElementById('fin-go');if(btn){btn.disabled=true;btn.textContent='Finalizando…';}
+    try{
+      const r=await fetch(API+'/producir',{method:'POST',headers:this.headers(),body:JSON.stringify({accion:'finalizar',loteId,cantidadReal:real,notas:nota.trim(),token:this.token})});
+      const d=await r.json();
+      if(d.success){
+        this.cerrarModal();
+        const dif=d.diferencia;
+        this.toast('✓ Lote finalizado · Dif: '+(dif>0?'+'+dif:dif)+' · '+this.fmtTiempo(d.tiempoMin),'ok');
+        this.cargarLotes();
+      }else{this.toast(d.error||'Error','err');if(btn){btn.disabled=false;btn.textContent='Finalizar';}}
+    }catch(e){this.toast(e.message,'err');if(btn){btn.disabled=false;btn.textContent='Finalizar';}}
   },
   async verLote(id){
     this.abrirModal('Trazabilidad del lote','<div class="spin">Cargando…</div>');
@@ -1059,7 +1214,11 @@ const App = {
         </div>
         <table class="tabla" style="margin-bottom:.8rem">
           <tr><td>Producto</td><td style="text-align:right;font-weight:600">${l.producto}</td></tr>
-          <tr><td>Cantidad producida</td><td style="text-align:right;font-weight:600">${l.cantidad} u</td></tr>
+          <tr><td>Cantidad esperada</td><td style="text-align:right;font-weight:600">${l.cantidadEsperada==null?'—':l.cantidadEsperada+' u'}</td></tr>
+          <tr><td>Cantidad producida (real)</td><td style="text-align:right;font-weight:600">${l.cantidad} u</td></tr>
+          ${l.diferencia!=null?`<tr><td>Diferencia (merma)</td><td style="text-align:right;font-weight:600;color:${l.diferencia<0?'var(--err)':(l.diferencia>0?'var(--ok)':'#888')}">${l.diferencia>0?'+':''}${l.diferencia} u</td></tr>`:''}
+          ${l.tiempoMin!=null?`<tr><td>Tiempo de producción</td><td style="text-align:right">${this.fmtTiempo(l.tiempoMin)}</td></tr>`:''}
+          ${l.empleado?`<tr><td>Empleado a cargo</td><td style="text-align:right">${l.empleado}</td></tr>`:''}
           <tr><td>Costo del lote</td><td style="text-align:right;font-weight:600">${this.money(l.costo)}</td></tr>
           <tr><td>Costo unitario</td><td style="text-align:right">${this.money(l.cantidad?l.costo/l.cantidad:0)}</td></tr>
         </table>
@@ -1848,6 +2007,43 @@ const App = {
   },
 
   
+  // ---------- CONFIGURACIÓN ----------
+  async cargarConfig(){
+    const el=document.getElementById('config-body');
+    el.innerHTML='<div class="spin">Cargando…</div>';
+    try{
+      const [bt,ci]=await Promise.all([
+        fetch(API+'/config?clave=telegram_bot_token&token='+encodeURIComponent(this.token),{headers:this.headers()}).then(r=>r.json()).catch(()=>({})),
+        fetch(API+'/config?clave=telegram_chat_id&token='+encodeURIComponent(this.token),{headers:this.headers()}).then(r=>r.json()).catch(()=>({}))
+      ]);
+      el.innerHTML=`
+        <div class="panel">
+          <h2>📲 Telegram (Alertas)</h2>
+          <p style="font-size:.85rem;color:#888;margin-bottom:.8rem">Configurá el bot para recibir alertas (stock bajo, mermas, cierres de caja).</p>
+          <label style="font-size:.85rem;color:#444;font-weight:600">Bot Token</label>
+          <input id="cfg-bot" value="${bt&&bt.valor?bt.valor:''}" placeholder="123456:ABC-DEF…" style="width:100%;padding:.6rem;border:1px solid #ddd;border-radius:10px;margin:.3rem 0 .9rem">
+          <label style="font-size:.85rem;color:#444;font-weight:600">Chat ID</label>
+          <input id="cfg-chat" value="${ci&&ci.valor?ci.valor:''}" placeholder="-123456789" style="width:100%;padding:.6rem;border:1px solid #ddd;border-radius:10px;margin:.3rem 0 1rem">
+          <button class="btn btn-violeta" id="cfg-go" onclick="App.saveConfig()">Guardar</button>
+        </div>
+        <div class="panel">
+          <h2>ℹ️ Mantenimiento del sistema</h2>
+          <p style="font-size:.85rem;color:#888">En la versión Supabase no hace falta <b>Inicializar</b>, <b>Diagnóstico</b> ni <b>Reparar Headers</b>: esas tareas eran propias de Google Sheets (crear hojas y corregir encabezados). Acá el esquema vive en PostgreSQL y se mantiene solo con las migraciones SQL.</p>
+        </div>`;
+    }catch(e){el.innerHTML='<div class="vacio">Error: '+e.message+'</div>';}
+  },
+  async saveConfig(){
+    const bot=document.getElementById('cfg-bot').value.trim();
+    const chat=document.getElementById('cfg-chat').value.trim();
+    const btn=document.getElementById('cfg-go');if(btn){btn.disabled=true;btn.textContent='Guardando…';}
+    try{
+      await fetch(API+'/config',{method:'POST',headers:this.headers(),body:JSON.stringify({clave:'telegram_bot_token',valor:bot,token:this.token})});
+      await fetch(API+'/config',{method:'POST',headers:this.headers(),body:JSON.stringify({clave:'telegram_chat_id',valor:chat,token:this.token})});
+      this.toast('✓ Configuración guardada','ok');
+    }catch(e){this.toast(e.message,'err');}
+    if(btn){btn.disabled=false;btn.textContent='Guardar';}
+  },
+
   // ---------- DOCUMENTOS · DATA ENTRY AUTOMÁTICO (costo cero) ----------
   docExtraido:null,
   async cargarDocumentos(){
