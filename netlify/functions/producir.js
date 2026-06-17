@@ -1,19 +1,20 @@
 // netlify/functions/producir.js
-// Producción de lotes con cálculo de mermas (flujo de dos pasos) + compatibilidad legacy.
+// Producción de lotes con merma a nivel PRODUCTO e INGREDIENTE (flujo de dos pasos)
+// + compatibilidad legacy (un paso).
 //
-// POST { accion:'iniciar', productoId, cantidadEsperada, empleado?, responsable?, forzar?, token }
-//    → crea un lote EN PROCESO, descuenta la materia prima (requerimiento teórico),
-//      registra hora de inicio y costo estimado. NO suma stock del producto todavía.
+// POST { accion:'iniciar', productoId, cantidadEsperada, empleado?, forzar?, token }
+//    → crea lote EN PROCESO, descuenta materia prima teórica (receta × esperada),
+//      guarda costo teórico y el detalle por ingrediente. No suma stock del producto.
 //
-// POST { accion:'finalizar', loteId, cantidadReal, token }
-//    → cierra el lote: guarda la cantidad real producida, calcula diferencia (merma)
-//      y tiempo (fin − inicio), y recién ahí suma el stock real del producto.
+// POST { accion:'finalizar', loteId, cantidadReal, consumosReales?, notas?, token }
+//    → cierra el lote: cantidad real producida + (opcional) uso REAL por ingrediente.
+//      Con consumosReales: ajusta stock por la diferencia teórico−real de cada ingrediente,
+//      calcula el desvío por ingrediente y RECALCULA el costo del lote sobre el uso real.
 //
-// POST { productoId, cantidad, responsable?, notas?, forzar?, token }  (LEGACY, un paso)
-//    → produce de una (lo usan Predicción y Planning): descuenta materia prima,
-//      suma stock y deja el lote FINALIZADO con diferencia 0.
+// POST { productoId, cantidad, ... }  (LEGACY, un paso) → produce y finaliza en el acto.
 //
-// GET ?token=...  → historial de lotes (en proceso + finalizados) con merma y tiempo.
+// GET ?token=...            → historial (en proceso + finalizados)
+// GET ?loteId=N&token=...   → detalle teórico por ingrediente (para el form de finalización)
 
 const { supabase, ok, bad, preflight } = require('./_supabase');
 
@@ -29,6 +30,7 @@ function minutosEntre(ini, fin) {
   if (!ini || !fin) return null;
   return Math.max(0, Math.round((new Date(fin) - new Date(ini)) / 60000));
 }
+const r2 = n => Math.round((Number(n) || 0) * 100) / 100;
 
 // Lee la receta y calcula requerimiento + costo + faltantes para una cantidad dada
 async function calcularLote(productoId, cantidad) {
@@ -52,7 +54,7 @@ async function calcularLote(productoId, cantidad) {
     descuentos.push({ id: r.ingrediente_id, nuevo: Math.max(0, disp - necesita) });
     consumos.push({
       ingrediente_id: r.ingrediente_id, nombre: ing.nombre || '',
-      cantidad: necesita, unidad: r.unidad || '', costo_linea: Math.round(costoLinea * 100) / 100
+      cantidad: necesita, unidad: r.unidad || '', costo_linea: r2(costoLinea)
     });
   });
 
@@ -72,13 +74,36 @@ async function codigoTraza() {
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return preflight();
 
-  // ---------- HISTORIAL ----------
+  // ---------- GET ----------
   if (event.httpMethod === 'GET') {
     if (!autorizado(event, null)) return bad(401, 'No autorizado');
+    const qs = event.queryStringParameters || {};
+
+    // GET detalle teórico de un lote (para armar el form de finalización)
+    if (qs.loteId) {
+      try {
+        const { data: det } = await supabase
+          .from('lote_ingredientes')
+          .select('id, ingrediente_id, nombre, cantidad, unidad, costo_linea, cantidad_real, desvio, costo_real, ingredientes(costo_unitario)')
+          .eq('lote_id', parseInt(qs.loteId, 10));
+        const detalle = (det || []).map(d => ({
+          ingredienteId: d.ingrediente_id, nombre: d.nombre,
+          teorico: Number(d.cantidad) || 0, unidad: d.unidad || '',
+          costoUnitario: Number(d.ingredientes && d.ingredientes.costo_unitario) || 0,
+          cantidadReal: d.cantidad_real == null ? null : Number(d.cantidad_real),
+          desvio: d.desvio == null ? null : Number(d.desvio),
+          costoTeorico: Number(d.costo_linea) || 0,
+          costoReal: d.costo_real == null ? null : Number(d.costo_real)
+        }));
+        return ok({ success: true, detalle });
+      } catch (err) { return bad(500, String(err)); }
+    }
+
+    // GET historial
     try {
       const { data } = await supabase
         .from('lotes_produccion')
-        .select('id, codigo_trazabilidad, cantidad_producida, cantidad_esperada, costo_total, ingredientes_ok, estado, empleado, responsable, notas, fecha, hora_inicio, hora_fin, productos(nombre)')
+        .select('id, codigo_trazabilidad, cantidad_producida, cantidad_esperada, costo_total, costo_teorico, ingredientes_ok, estado, empleado, responsable, notas, fecha, hora_inicio, hora_fin, productos(nombre)')
         .order('fecha', { ascending: false }).limit(60);
       const lotes = (data || []).map(l => {
         const estado = l.estado || 'finalizado';
@@ -88,11 +113,10 @@ exports.handler = async (event) => {
           id: l.id, codigo: l.codigo_trazabilidad,
           producto: l.productos ? l.productos.nombre : '',
           estado,
-          cantidad: real,                 // compat
-          cantidadReal: real,
-          cantidadEsperada: esperada,
+          cantidad: real, cantidadReal: real, cantidadEsperada: esperada,
           diferencia: (estado === 'finalizado' && esperada != null) ? real - esperada : null,
           costo: Number(l.costo_total) || 0,
+          costoTeorico: l.costo_teorico == null ? null : Number(l.costo_teorico),
           ingredientesOk: l.ingredientes_ok,
           empleado: l.empleado || l.responsable || '',
           responsable: l.responsable || l.empleado || '',
@@ -102,8 +126,7 @@ exports.handler = async (event) => {
         };
       });
       return ok({
-        success: true,
-        lotes,
+        success: true, lotes,
         enProceso: lotes.filter(l => l.estado === 'en_proceso'),
         finalizados: lotes.filter(l => l.estado !== 'en_proceso')
       });
@@ -128,7 +151,7 @@ exports.handler = async (event) => {
     try {
       const { data: lote } = await supabase
         .from('lotes_produccion')
-        .select('id, producto_id, cantidad_esperada, estado, hora_inicio')
+        .select('id, producto_id, cantidad_esperada, estado, hora_inicio, costo_total')
         .eq('id', loteId).maybeSingle();
       if (!lote) return bad(404, 'Lote no encontrado');
       if (lote.estado === 'finalizado') return bad(400, 'El lote ya está finalizado');
@@ -141,15 +164,52 @@ exports.handler = async (event) => {
       const horaFin = new Date().toISOString();
       const upd = { cantidad_producida: real, estado: 'finalizado', hora_fin: horaFin };
       if (typeof body.notas === 'string' && body.notas.trim() !== '') upd.notas = body.notas.trim();
-      await supabase.from('lotes_produccion')
-        .update(upd)
-        .eq('id', loteId);
+
+      // ----- USO REAL POR INGREDIENTE (check receta vs práctica real) -----
+      const reales = Array.isArray(body.consumosReales) ? body.consumosReales : null;
+      let costoReal = null, detalleMerma = [];
+      if (reales && reales.length) {
+        const { data: li } = await supabase
+          .from('lote_ingredientes')
+          .select('id, ingrediente_id, nombre, cantidad, ingredientes(stock_actual, costo_unitario)')
+          .eq('lote_id', loteId);
+        costoReal = 0;
+        const tareas = [];
+        for (const item of (li || [])) {
+          const teo = Number(item.cantidad) || 0;
+          const match = reales.find(x => Number(x.ingredienteId || x.ingrediente_id) === Number(item.ingrediente_id));
+          const usado = match && match.cantidadReal != null ? Number(match.cantidadReal) : teo;
+          const cu = Number(item.ingredientes && item.ingredientes.costo_unitario) || 0;
+          const costoLineaReal = usado * cu;
+          costoReal += costoLineaReal;
+          // Ajuste de stock: al iniciar se descontó el teórico. Devolvemos (teo - usado):
+          // usó menos → vuelve al stock; usó más → descuenta el extra.
+          const ajuste = teo - usado;
+          if (ajuste !== 0) {
+            const disp = Number(item.ingredientes && item.ingredientes.stock_actual) || 0;
+            tareas.push(supabase.from('ingredientes')
+              .update({ stock_actual: disp + ajuste, actualizado_en: horaFin })
+              .eq('id', item.ingrediente_id));
+          }
+          tareas.push(supabase.from('lote_ingredientes').update({
+            cantidad_real: usado, desvio: r2(usado - teo), costo_real: r2(costoLineaReal)
+          }).eq('id', item.id));
+          detalleMerma.push({ nombre: item.nombre, teorico: teo, real: usado, desvio: r2(usado - teo) });
+        }
+        await Promise.all(tareas);   // optimización: escrituras por ingrediente en paralelo
+        upd.costo_total = r2(costoReal); // contabilización de costos en función de la merma real
+      }
+
+      await supabase.from('lotes_produccion').update(upd).eq('id', loteId);
 
       const esperada = Number(lote.cantidad_esperada) || 0;
       return ok({
         success: true, loteId, cantidadReal: real, nuevoStock,
         diferencia: real - esperada,
-        tiempoMin: minutosEntre(lote.hora_inicio, horaFin)
+        tiempoMin: minutosEntre(lote.hora_inicio, horaFin),
+        costoTeorico: Number(lote.costo_total) || 0,
+        costoReal: costoReal == null ? null : r2(costoReal),
+        detalleMerma
       });
     } catch (err) { return bad(500, String(err)); }
   }
@@ -167,26 +227,27 @@ exports.handler = async (event) => {
 
     const { tieneReceta, costoTotal, faltantes, descuentos, consumos } = await calcularLote(productoId, cantidad);
 
-    // Si falta materia prima y no se forzó, avisar sin tocar nada
     if (faltantes.length && !body.forzar) {
       return ok({ success: false, faltantes, mensaje: 'No alcanza la materia prima para este lote' });
     }
 
-    // Descontar materia prima (consumo al iniciar, igual que el sistema original)
-    for (const d of descuentos) {
-      await supabase.from('ingredientes').update({ stock_actual: d.nuevo, actualizado_en: new Date().toISOString() }).eq('id', d.id);
-    }
-
-    const codigo = await codigoTraza();
+    // Descontar materia prima en paralelo y generar el código a la vez (optimización: 1 ida vs N)
     const ahora = new Date().toISOString();
+    const [codigo] = await Promise.all([
+      codigoTraza(),
+      ...descuentos.map(d =>
+        supabase.from('ingredientes')
+          .update({ stock_actual: d.nuevo, actualizado_en: ahora })
+          .eq('id', d.id)
+      )
+    ]);
     const empleado = String(body.empleado || body.responsable || '');
 
     if (esIniciar) {
-      // Lote EN PROCESO — el stock del producto se suma al finalizar
       const { data: lote } = await supabase.from('lotes_produccion').insert({
         producto_id: productoId, cantidad_esperada: cantidad, cantidad_producida: 0,
-        costo_total: costoTotal, ingredientes_ok: tieneReceta, codigo_trazabilidad: codigo,
-        empleado, responsable: empleado, estado: 'en_proceso',
+        costo_total: costoTotal, costo_teorico: costoTotal, ingredientes_ok: tieneReceta,
+        codigo_trazabilidad: codigo, empleado, responsable: empleado, estado: 'en_proceso',
         hora_inicio: ahora, notas: String(body.notas || '')
       }).select('id').maybeSingle();
 
@@ -195,19 +256,18 @@ exports.handler = async (event) => {
       }
       return ok({
         success: true, loteId: lote && lote.id, codigoTrazabilidad: codigo, producto: prod.nombre,
-        cantidadEsperada: cantidad, costoEstimado: costoTotal, estado: 'en_proceso',
-        sinReceta: !tieneReceta
+        cantidadEsperada: cantidad, costoEstimado: costoTotal, estado: 'en_proceso', sinReceta: !tieneReceta
       });
     }
 
-    // LEGACY: un solo paso → finaliza en el acto
+    // LEGACY: un solo paso
     const nuevoStock = (Number(prod.stock) || 0) + cantidad;
     await supabase.from('productos').update({ stock: nuevoStock }).eq('id', productoId);
 
     const { data: lote } = await supabase.from('lotes_produccion').insert({
       producto_id: productoId, cantidad_esperada: cantidad, cantidad_producida: cantidad,
-      costo_total: costoTotal, ingredientes_ok: tieneReceta, codigo_trazabilidad: codigo,
-      empleado, responsable: empleado, estado: 'finalizado',
+      costo_total: costoTotal, costo_teorico: costoTotal, ingredientes_ok: tieneReceta,
+      codigo_trazabilidad: codigo, empleado, responsable: empleado, estado: 'finalizado',
       hora_inicio: ahora, hora_fin: ahora, notas: String(body.notas || '')
     }).select('id').maybeSingle();
 
