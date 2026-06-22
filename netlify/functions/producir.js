@@ -32,11 +32,31 @@ function minutosEntre(ini, fin) {
 }
 const r2 = n => Math.round((Number(n) || 0) * 100) / 100;
 
+// --- Conversión de unidades para COSTO ---------------------------------------
+// El costo_unitario del ingrediente está cargado por Kg / L, pero las recetas
+// se cargan en g / ml. Si multiplicáramos cantidad(g) × costo(/Kg) el costo sale
+// ×1000. factorCosto convierte la cantidad de receta a la unidad del ingrediente.
+// Supuesto (válido para todas las recetas actuales de Monnoserie): cuando el
+// insumo está en Kg/L, la receta está en g/ml. Si alguna receta usara Kg/L
+// directo para un insumo en Kg/L, este factor NO debe dividir → ver nota abajo.
+function factorCosto(unidadIng) {
+  const ui = String(unidadIng || '').toLowerCase().trim();
+  return (ui === 'kg' || ui === 'l') ? 0.001 : 1;
+}
+// Unidad a mostrar/guardar en la línea de receta: si el insumo está en Kg/L,
+// la línea se expresa en g/ml (que es como está la cantidad).
+function unidadLinea(unidadReceta, unidadIng) {
+  const ui = String(unidadIng || '').toLowerCase().trim();
+  if (ui === 'kg') return 'g';
+  if (ui === 'l')  return 'ml';
+  return unidadReceta || ui || '';
+}
+
 // Lee la receta y calcula requerimiento + costo + faltantes para una cantidad dada
 async function calcularLote(productoId, cantidad) {
   const { data: receta } = await supabase
     .from('recetas')
-    .select('ingrediente_id, cantidad, unidad, ingredientes(nombre, stock_actual, costo_unitario)')
+    .select('ingrediente_id, cantidad, unidad, ingredientes(nombre, unidad, stock_actual, costo_unitario)')
     .eq('producto_id', productoId);
 
   let costoTotal = 0;
@@ -45,16 +65,17 @@ async function calcularLote(productoId, cantidad) {
   const consumos = [];
 
   (receta || []).forEach(r => {
-    const necesita = Number(r.cantidad) * cantidad;
+    const necesita = Number(r.cantidad) * cantidad;          // en unidad de receta (g/ml/unid)
     const ing = r.ingredientes || {};
     const disp = Number(ing.stock_actual) || 0;
-    const costoLinea = necesita * (Number(ing.costo_unitario) || 0);
+    const factor = factorCosto(ing.unidad);                  // g/ml -> Kg/L para costear
+    const costoLinea = necesita * (Number(ing.costo_unitario) || 0) * factor;
     costoTotal += costoLinea;
     if (disp < necesita) faltantes.push({ nombre: ing.nombre, necesita, disponible: disp });
     descuentos.push({ id: r.ingrediente_id, nuevo: Math.max(0, disp - necesita) });
     consumos.push({
       ingrediente_id: r.ingrediente_id, nombre: ing.nombre || '',
-      cantidad: necesita, unidad: r.unidad || '', costo_linea: r2(costoLinea)
+      cantidad: necesita, unidad: unidadLinea(r.unidad, ing.unidad), costo_linea: r2(costoLinea)
     });
   });
 
@@ -171,7 +192,7 @@ exports.handler = async (event) => {
       if (reales && reales.length) {
         const { data: li } = await supabase
           .from('lote_ingredientes')
-          .select('id, ingrediente_id, nombre, cantidad, ingredientes(stock_actual, costo_unitario)')
+          .select('id, ingrediente_id, nombre, cantidad, ingredientes(unidad, stock_actual, costo_unitario)')
           .eq('lote_id', loteId);
         costoReal = 0;
         const tareas = [];
@@ -180,7 +201,8 @@ exports.handler = async (event) => {
           const match = reales.find(x => Number(x.ingredienteId || x.ingrediente_id) === Number(item.ingrediente_id));
           const usado = match && match.cantidadReal != null ? Number(match.cantidadReal) : teo;
           const cu = Number(item.ingredientes && item.ingredientes.costo_unitario) || 0;
-          const costoLineaReal = usado * cu;
+          const factor = factorCosto(item.ingredientes && item.ingredientes.unidad); // g/ml -> Kg/L
+          const costoLineaReal = usado * cu * factor;
           costoReal += costoLineaReal;
           // Ajuste de stock: al iniciar se descontó el teórico. Devolvemos (teo - usado):
           // usó menos → vuelve al stock; usó más → descuenta el extra.
