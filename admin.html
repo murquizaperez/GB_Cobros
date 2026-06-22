@@ -1186,7 +1186,7 @@ const App = {
     if(cantidad){const c=document.getElementById('tanda-cant');if(c)c.value=cantidad;}
     if(productoId)this.recalcTanda();
   },
-  async recalcTanda(){
+ async recalcTanda(){
     const pid=parseInt(document.getElementById('tanda-prod').value,10);
     const cant=Number(document.getElementById('tanda-cant').value)||0;
     const req=document.getElementById('tanda-req');
@@ -1199,7 +1199,15 @@ const App = {
       if(!items){const r=await fetch(API+'/receta?productoId='+pid+'&token='+encodeURIComponent(this.token),{headers:this.headers()});items=((await r.json()).items||[]);this._recetaCache[pid]=items;}
       if(!items.length){req.innerHTML='<span style="color:#999">Sin receta — no descuenta materia prima.</span>';costoEl.textContent='$0.00';return;}
       let costo=0;
-      const filas=items.map(it=>{const necesita=Number(it.cantidad)*cant;const cl=necesita*Number(it.costo||0);costo+=cl;return `<div style="display:flex;justify-content:space-between"><span>${it.nombre}</span><span>${(Math.round(necesita*100)/100)} ${it.unidad}</span></div>`;}).join('');
+      const filas=items.map(it=>{
+        const u=String(it.unidad||'').toLowerCase().trim();
+        const factor=(u==='kg'||u==='l')?0.001:1;          // receta en g/ml, costo por Kg/L → ÷1000
+        const uShow=u==='kg'?'g':(u==='l'?'ml':it.unidad);  // mostrar g/ml, no Kg/L
+        const necesita=Number(it.cantidad)*cant;
+        const cl=necesita*Number(it.costo||0)*factor;
+        costo+=cl;
+        return `<div style="display:flex;justify-content:space-between"><span>${it.nombre}</span><span>${(Math.round(necesita*100)/100)} ${uShow}</span></div>`;
+      }).join('');
       req.innerHTML=filas;
       costoEl.textContent=this.money(costo);
     }catch(e){req.innerHTML='Error: '+e.message;}
