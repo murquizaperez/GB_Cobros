@@ -1,8 +1,16 @@
 // netlify/functions/crear-venta.js
 // POST /api/crear-venta
-//   { items:[{productoId, cantidad}], medioPago, clienteNombre?, quiereFactura?, facturaCuit?, token }
+//   { items:[{productoId, cantidad}], medioPago, clienteNombre?, quiereFactura?, facturaCuit?, esRegalo?, token }
 // Venta inmediata del local (POS): exige caja abierta, descuenta stock,
 // registra el movimiento de caja y, si se pide, emite Factura C.
+//
+// REGALO (esRegalo:true): la mercadería sale igual (descuenta stock y estampa
+//   el lote para trazabilidad) pero NO se cobra: total 0, medio 'Regalo',
+//   sin movimiento de caja y sin factura. Queda marcado es_regalo=true.
+//
+// ⚠️ Requiere correr antes:
+//    - migracion-trazabilidad.sql (columnas lote_id / lote_codigo en detalle_pedidos)
+//    - migracion-reportes.sql     (columna es_regalo en pedidos)
 
 const { supabase, ok, bad, preflight } = require('./_supabase');
 const { emitirFacturaC } = require('./_arca');
@@ -25,10 +33,11 @@ exports.handler = async (event) => {
 
   const items = Array.isArray(body.items) ? body.items : [];
   if (!items.length) return bad(400, 'Carrito vacío');
-  const medioPago = String(body.medioPago || 'Efectivo');
+  const esRegalo = body.esRegalo === true;
+  const medioPago = esRegalo ? 'Regalo' : String(body.medioPago || 'Efectivo');
 
   try {
-    // 1) Caja abierta obligatoria
+    // 1) Caja abierta obligatoria (también para regalos: es un movimiento del local)
     const { data: caja } = await supabase.from('cajas').select('id, total_ventas').eq('estado', 'abierta')
       .order('abierta_en', { ascending: false }).maybeSingle();
     if (!caja) return bad(409, 'No hay caja abierta. Abrí la caja para vender.');
@@ -39,46 +48,86 @@ exports.handler = async (event) => {
     const mapa = {};
     (prods || []).forEach(p => { mapa[p.id] = p; });
 
-    let total = 0;
+    // 2b) Último lote finalizado de cada producto → trazabilidad venta→lote.
+    const loteDe = {};
+    const { data: lotes } = await supabase
+      .from('lotes_produccion')
+      .select('id, producto_id, codigo_trazabilidad, fecha')
+      .in('producto_id', ids)
+      .eq('estado', 'finalizado')
+      .order('fecha', { ascending: false })
+      .order('id', { ascending: false });
+    (lotes || []).forEach(l => { if (loteDe[l.producto_id] === undefined) loteDe[l.producto_id] = l; });
+
+    let totalReal = 0;
     const lineas = [];
     for (const it of items) {
       const p = mapa[parseInt(it.productoId, 10)];
       if (!p) continue;
       const cant = Math.max(1, parseInt(it.cantidad, 10) || 1);
       const sub = Number(p.precio_minorista) * cant;
-      total += sub;
-      lineas.push({ producto_id: p.id, nombre: p.nombre, cantidad: cant, precio_unitario: Number(p.precio_minorista), subtotal: sub, stockActual: Number(p.stock) });
+      totalReal += sub;
+      const lote = loteDe[p.id] || null;
+      lineas.push({
+        producto_id: p.id, nombre: p.nombre, cantidad: cant,
+        precio_unitario: Number(p.precio_minorista), subtotal: sub, stockActual: Number(p.stock),
+        lote_id: lote ? lote.id : null, lote_codigo: lote ? lote.codigo_trazabilidad : null
+      });
     }
     if (!lineas.length) return bad(400, 'Sin productos válidos');
 
-    // 3) Crear pedido canal 'pos' (venta entregada y pagada)
+    // Total cobrado: 0 si es regalo
+    const total = esRegalo ? 0 : totalReal;
+
+    // 3) Crear pedido canal 'pos'
     const { data: pedido, error: errPed } = await supabase.from('pedidos').insert({
       canal: 'pos', estado: 'entregado', estado_pago: 'pagado',
-      medio_pago: medioPago, total, caja_id: caja.id,
+      medio_pago: medioPago, total, caja_id: caja.id, es_regalo: esRegalo,
       pagado_en: new Date().toISOString(), stock_descontado: true,
-      quiere_factura: body.quiereFactura === true, factura_cuit: String(body.facturaCuit || '').replace(/\D/g, ''),
-      notas: body.clienteNombre ? ('Cliente: ' + body.clienteNombre) : ''
+      quiere_factura: !esRegalo && body.quiereFactura === true,
+      factura_cuit: String(body.facturaCuit || '').replace(/\D/g, ''),
+      notas: (esRegalo ? '[REGALO] ' : '') + (body.clienteNombre ? ('Cliente: ' + body.clienteNombre) : '')
     }).select('id').maybeSingle();
     if (errPed) return bad(500, errPed.message);
 
-    // 4) Detalle
+    // 4) Detalle (con lote estampado; en regalo el subtotal va en 0)
     await supabase.from('detalle_pedidos').insert(
-      lineas.map(l => ({ pedido_id: pedido.id, producto_id: l.producto_id, nombre: l.nombre, cantidad: l.cantidad, precio_unitario: l.precio_unitario, subtotal: l.subtotal }))
+      lineas.map(l => ({
+        pedido_id: pedido.id, producto_id: l.producto_id, nombre: l.nombre,
+        cantidad: l.cantidad, precio_unitario: l.precio_unitario,
+        subtotal: esRegalo ? 0 : l.subtotal,
+        lote_id: l.lote_id, lote_codigo: l.lote_codigo
+      }))
     );
 
-    // 5) Descontar stock
+    // 5) Descontar stock (siempre: la mercadería sale). Si se vende más de lo que
+    //    hay, se clampa a 0 PERO se registra la sobreventa (señal de error de conteo).
+    const sobreventas = [];
     for (const l of lineas) {
+      if (l.cantidad > l.stockActual) {
+        sobreventas.push({
+          producto_id: l.producto_id, nombre: l.nombre,
+          vendidas: l.cantidad, stock_previo: l.stockActual,
+          faltante: l.cantidad - l.stockActual, pedido_id: pedido.id
+        });
+      }
       const nuevo = Math.max(0, l.stockActual - l.cantidad);
       await supabase.from('productos').update({ stock: nuevo }).eq('id', l.producto_id);
     }
+    // Registrar sobreventas (resiliente: si la tabla no existe todavía, no rompe la venta)
+    if (sobreventas.length) {
+      try { await supabase.from('sobreventas').insert(sobreventas); } catch (e) { /* tabla aún no creada */ }
+    }
 
-    // 6) Movimiento de caja + actualizar total de la caja
-    await supabase.from('movimientos_caja').insert({ caja_id: caja.id, tipo: 'venta', monto: total, concepto: 'Venta POS #' + pedido.id });
-    await supabase.from('cajas').update({ total_ventas: Number(caja.total_ventas || 0) + total }).eq('id', caja.id);
+    // 6) Caja: solo si NO es regalo (un regalo no ingresa plata)
+    if (!esRegalo) {
+      await supabase.from('movimientos_caja').insert({ caja_id: caja.id, tipo: 'venta', monto: total, concepto: 'Venta POS #' + pedido.id });
+      await supabase.from('cajas').update({ total_ventas: Number(caja.total_ventas || 0) + total }).eq('id', caja.id);
+    }
 
-    // 7) Factura opcional
+    // 7) Factura opcional (nunca para regalos)
     let factura = null;
-    if (body.quiereFactura === true) {
+    if (!esRegalo && body.quiereFactura === true) {
       try {
         const f = await emitirFacturaC({ importeTotal: total, concepto: 'Venta Monnoserie #' + pedido.id, docCliente: String(body.facturaCuit || '').replace(/\D/g, '') });
         await supabase.from('facturas').insert({ pedido_id: pedido.id, afip_numero: f.numeroComprobante, cae: f.cae, cae_vto: f.cae_vto, importe: total, tipo: 'C', punto_venta: f.puntoVenta, qr_url: f.qrUrl, concepto: 'Venta POS #' + pedido.id });
@@ -88,7 +137,7 @@ exports.handler = async (event) => {
       }
     }
 
-    return ok({ success: true, ventaId: pedido.id, total, factura });
+    return ok({ success: true, ventaId: pedido.id, total, esRegalo, factura });
   } catch (err) {
     return bad(500, String(err));
   }
