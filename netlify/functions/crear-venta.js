@@ -111,8 +111,8 @@ exports.handler = async (event) => {
           faltante: l.cantidad - l.stockActual, pedido_id: pedido.id
         });
       }
-      const nuevo = Math.max(0, l.stockActual - l.cantidad);
-      await supabase.from('productos').update({ stock: nuevo }).eq('id', l.producto_id);
+      // Descuento atómico en la base (evita pisarse con ventas simultáneas).
+      await supabase.rpc('descontar_stock_producto', { p_id: l.producto_id, p_cant: Number(l.cantidad) || 0 });
     }
     // Registrar sobreventas (resiliente: si la tabla no existe todavía, no rompe la venta)
     if (sobreventas.length) {
