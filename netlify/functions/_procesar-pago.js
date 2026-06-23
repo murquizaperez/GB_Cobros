@@ -4,14 +4,16 @@
 //
 // Hace, en orden e idempotente:
 //   1. Marca el pedido PAGADO (si no lo estaba)
-//   2. Descuenta stock una sola vez (flag stock_descontado)
-//   3. Si quiere_factura → emite Factura C en ARCA y guarda CAE/QR
+//   2. Descuenta stock una sola vez (flag stock_descontado) — AHORA ATÓMICO (RPC)
+//   3. Si no hay factura previa → emite Factura C en ARCA, guarda CAE/QR
+//      y CONGELA un snapshot inmutable de la factura
 //   4. Avanza estado a 'en_preparacion'
 // Cada paso queda registrado en eventos_pedido (para monitoreo/debug).
 
 const { supabase } = require('./_supabase');
 const { emitirFacturaC } = require('./_arca');
 const { enviarNotificacion } = require('./_email');
+const { construirSnapshot } = require('./_factura-snapshot');
 
 async function log(pedidoId, tipo, detalle) {
   try { await supabase.from('eventos_pedido').insert({ pedido_id: pedidoId, tipo, detalle: String(detalle || '').slice(0, 500) }); }
@@ -23,13 +25,12 @@ async function log(pedidoId, tipo, detalle) {
  * @param {number} opts.pedidoId
  * @param {string} [opts.mpPaymentId]
  * @param {string} [opts.metodo]     'Mercado Pago' | 'Transferencia' | 'Efectivo'
- * @param {number} [opts.monto]      monto informado por la fuente (se valida contra el pedido)
+ * @param {number} [opts.monto]
  */
 async function procesarPago(opts) {
   const { pedidoId } = opts;
   if (!pedidoId) return { success: false, error: 'Falta pedidoId' };
 
-  // Traer el pedido con su detalle
   const { data: pedido, error: errP } = await supabase
     .from('pedidos')
     .select('id, total, estado, estado_pago, quiere_factura, factura_cuit, stock_descontado, notas, clientes(nombre, email), detalle_pedidos(producto_id, nombre, cantidad, subtotal)')
@@ -53,17 +54,18 @@ async function procesarPago(opts) {
     resultado.pasos.push('pago_ya_confirmado');
   }
 
-  // ---- 2) Descontar stock (una sola vez) ----
+  // ---- 2) Descontar stock (una sola vez, ATÓMICO) ----
   if (!pedido.stock_descontado) {
     try {
       for (const linea of (pedido.detalle_pedidos || [])) {
         if (!linea.producto_id) continue;
-        // Lectura + resta (Supabase JS no hace decremento atómico simple; leemos y escribimos)
-        const { data: prod } = await supabase.from('productos').select('stock').eq('id', linea.producto_id).maybeSingle();
-        if (prod) {
-          const nuevo = Math.max(0, (Number(prod.stock) || 0) - (Number(linea.cantidad) || 0));
-          await supabase.from('productos').update({ stock: nuevo }).eq('id', linea.producto_id);
-        }
+        // Decremento atómico en la base: UPDATE stock = GREATEST(0, stock - cant).
+        // Evita la condición de carrera del read-then-write con ventas simultáneas.
+        const { error: eRpc } = await supabase.rpc('descontar_stock_producto', {
+          p_id: linea.producto_id,
+          p_cant: Number(linea.cantidad) || 0
+        });
+        if (eRpc) throw new Error(eRpc.message);
       }
       await supabase.from('pedidos').update({ stock_descontado: true }).eq('id', pedidoId);
       await log(pedidoId, 'stock_descontado', `${(pedido.detalle_pedidos || []).length} líneas`);
@@ -76,7 +78,7 @@ async function procesarPago(opts) {
     resultado.pasos.push('stock_ya_descontado');
   }
 
-  // ---- 3) Facturar SIEMPRE (consumidor final, automático) si no hay factura previa ----
+  // ---- 3) Facturar SIEMPRE (si no hay factura previa) + snapshot inmutable ----
   {
     const { data: facturaPrevia } = await supabase
       .from('facturas').select('id, cae').eq('pedido_id', pedidoId).maybeSingle();
@@ -90,10 +92,27 @@ async function procesarPago(opts) {
           concepto: 'Pedido Monnoserie #' + pedidoId,
           docCliente: pedido.factura_cuit || ''   // vacío = Consumidor Final
         });
+
+        // Congelar la factura tal cual quedó emitida (emisor, receptor, ítems, totales, CAE/QR).
+        let snapshot = null;
+        try {
+          snapshot = await construirSnapshot(supabase, pedidoId, {
+            puntoVenta: f.puntoVenta,
+            afipNumero: f.numeroComprobante,
+            cae: f.cae,
+            caeVto: f.cae_vto,
+            qrUrl: f.qrUrl,
+            fecha: f.fecha,
+            importe: pedido.total
+          });
+        } catch (eSnap) {
+          await log(pedidoId, 'error', 'snapshot: ' + eSnap.message);
+        }
+
         await supabase.from('facturas').insert({
-          pedido_id: pedidoId, afip_numero: f.numeroComprobante, cae: f.cae, cae_vto: f.cae_vto,
-          importe: pedido.total, tipo: 'C', punto_venta: f.puntoVenta, qr_url: f.qrUrl,
-          concepto: 'Pedido Monnoserie #' + pedidoId
+          pedido_id: pedidoId, afip_numero: f.numeroComprobante, numero: f.numero, fecha: f.fecha,
+          cae: f.cae, cae_vto: f.cae_vto, importe: pedido.total, tipo: 'C',
+          punto_venta: f.puntoVenta, qr_url: f.qrUrl, concepto: 'Pedido Monnoserie #' + pedidoId, snapshot
         });
         await log(pedidoId, 'factura_emitida', f.numeroComprobante + ' CAE ' + f.cae);
         resultado.pasos.push('factura_emitida');
@@ -116,7 +135,6 @@ async function procesarPago(opts) {
   // ---- 5) Email "pago confirmado" con datos de factura si se emitió (fire-and-forget) ----
   const emailCli = pedido.clientes && pedido.clientes.email;
   if (emailCli) {
-    // Traer factura si se emitió en este ciclo
     let facturaEmail = null;
     if (pedido.quiere_factura) {
       const { data: fac } = await supabase.from('facturas').select('afip_numero, cae, cae_vto, importe, qr_url, error').eq('pedido_id', pedidoId).maybeSingle();
