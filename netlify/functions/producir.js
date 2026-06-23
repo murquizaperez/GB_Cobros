@@ -72,7 +72,7 @@ async function calcularLote(productoId, cantidad) {
     const costoLinea = necesita * (Number(ing.costo_unitario) || 0) * factor;
     costoTotal += costoLinea;
     if (disp < necesita) faltantes.push({ nombre: ing.nombre, necesita, disponible: disp });
-    descuentos.push({ id: r.ingrediente_id, nuevo: Math.max(0, disp - necesita) });
+    descuentos.push({ id: r.ingrediente_id, nuevo: Math.max(0, disp - necesita), cant: necesita });
     consumos.push({
       ingrediente_id: r.ingrediente_id, nombre: ing.nombre || '',
       cantidad: necesita, unidad: unidadLinea(r.unidad, ing.unidad), costo_linea: r2(costoLinea)
@@ -177,10 +177,8 @@ exports.handler = async (event) => {
       if (!lote) return bad(404, 'Lote no encontrado');
       if (lote.estado === 'finalizado') return bad(400, 'El lote ya está finalizado');
 
-      // Sumar el stock REAL producido
-      const { data: prod } = await supabase.from('productos').select('stock').eq('id', lote.producto_id).maybeSingle();
-      const nuevoStock = (Number(prod && prod.stock) || 0) + real;
-      await supabase.from('productos').update({ stock: nuevoStock }).eq('id', lote.producto_id);
+      // Sumar el stock REAL producido (alta atómica; devuelve el nuevo stock)
+      const { data: nuevoStock } = await supabase.rpc('ajustar_stock_producto', { p_id: lote.producto_id, p_delta: real });
 
       const horaFin = new Date().toISOString();
       const upd = { cantidad_producida: real, estado: 'finalizado', hora_fin: horaFin };
@@ -208,10 +206,8 @@ exports.handler = async (event) => {
           // usó menos → vuelve al stock; usó más → descuenta el extra.
           const ajuste = teo - usado;
           if (ajuste !== 0) {
-            const disp = Number(item.ingredientes && item.ingredientes.stock_actual) || 0;
-            tareas.push(supabase.from('ingredientes')
-              .update({ stock_actual: disp + ajuste, actualizado_en: horaFin })
-              .eq('id', item.ingrediente_id));
+            // Ajuste atómico: usó menos → suma (delta+); usó más → resta (delta−).
+            tareas.push(supabase.rpc('ajustar_stock_ingrediente', { p_id: item.ingrediente_id, p_delta: ajuste }));
           }
           tareas.push(supabase.from('lote_ingredientes').update({
             cantidad_real: usado, desvio: r2(usado - teo), costo_real: r2(costoLineaReal)
@@ -258,9 +254,8 @@ exports.handler = async (event) => {
     const [codigo] = await Promise.all([
       codigoTraza(),
       ...descuentos.map(d =>
-        supabase.from('ingredientes')
-          .update({ stock_actual: d.nuevo, actualizado_en: ahora })
-          .eq('id', d.id)
+        // Descuento atómico del insumo (delta negativo = consumo).
+        supabase.rpc('ajustar_stock_ingrediente', { p_id: d.id, p_delta: -(Number(d.cant) || 0) })
       )
     ]);
     const empleado = String(body.empleado || body.responsable || '');
@@ -282,9 +277,8 @@ exports.handler = async (event) => {
       });
     }
 
-    // LEGACY: un solo paso
-    const nuevoStock = (Number(prod.stock) || 0) + cantidad;
-    await supabase.from('productos').update({ stock: nuevoStock }).eq('id', productoId);
+    // LEGACY: un solo paso (alta atómica; devuelve el nuevo stock)
+    const { data: nuevoStock } = await supabase.rpc('ajustar_stock_producto', { p_id: productoId, p_delta: cantidad });
 
     const { data: lote } = await supabase.from('lotes_produccion').insert({
       producto_id: productoId, cantidad_esperada: cantidad, cantidad_producida: cantidad,
