@@ -24,7 +24,7 @@ const CONDICION_IVA_ID = {
 };
 
 function nuevaArca() {
-  const cuit = parseInt((process.env.ARCA_CUIT || '').replace(/\D/g, ''), 10);
+  const cuit = parseInt((process.env.ARCA_CUIT || process.env.AFIP_CUIT || '').replace(/\D/g, ''), 10);
   const cert = (process.env.AFIP_CERT || '').replace(/\\n/g, '\n');
   const key = (process.env.AFIP_KEY || '').replace(/\\n/g, '\n');
   if (!cuit) throw new Error('ARCA_CUIT no configurado');
@@ -34,7 +34,7 @@ function nuevaArca() {
 
 // Emisión genérica WSFEV1. cbteTipo: 11 = Factura C, 13 = Nota de Crédito C.
 async function _emitir({ cbteTipo, importeTotal, docCliente, cbtesAsoc, condIvaReceptor }) {
-  const ptoVta = parseInt(process.env.ARCA_PUNTO_VENTA || '3', 10);
+  const ptoVta = parseInt(process.env.ARCA_PUNTO_VENTA || process.env.AFIP_PUNTO_VENTA || '3', 10);
   const importe = Math.round(parseFloat(importeTotal) * 100) / 100;
   if (!importe || importe <= 0) throw new Error('Importe inválido');
 
@@ -75,7 +75,7 @@ async function _emitir({ cbteTipo, importeTotal, docCliente, cbtesAsoc, condIvaR
 
   const qrData = {
     ver: 1, fecha: fechaISO,
-    cuit: parseInt((process.env.ARCA_CUIT || '').replace(/\D/g, ''), 10),
+    cuit: parseInt((process.env.ARCA_CUIT || process.env.AFIP_CUIT || '').replace(/\D/g, ''), 10),
     ptoVta, tipoCmp: cbteTipo, nroCmp: numero,
     importe, moneda: 'PES', ctz: 1, tipoDocRec: payload.DocTipo, nroDocRec: payload.DocNro,
     tipoCodAut: 'E', codAut: parseInt(cae, 10),
@@ -102,7 +102,7 @@ async function emitirFacturaC(p) {
 /** Nota de Crédito C asociada a una factura original (Tipo 11). */
 async function emitirNotaCreditoC(p) {
   const orig = p.original || {};
-  const ptoVtaOrig = parseInt(String(orig.puntoVenta).replace(/\D/g, ''), 10) || parseInt(process.env.ARCA_PUNTO_VENTA || '3', 10);
+  const ptoVtaOrig = parseInt(String(orig.puntoVenta).replace(/\D/g, ''), 10) || parseInt(process.env.ARCA_PUNTO_VENTA || process.env.AFIP_PUNTO_VENTA || '3', 10);
   const nroOrig = parseInt(orig.numero, 10) || 0;
   if (!nroOrig) throw new Error('Falta el número de la factura original');
   const cbtesAsoc = [{ Tipo: 11, PtoVta: ptoVtaOrig, Nro: nroOrig }];
